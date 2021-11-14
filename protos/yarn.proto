@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package yarn;
+
+service YarnApi {
+    rpc insertLive(Live) returns (TaskResult);
+    rpc insertChannel (Channel) returns (TaskResult);
+    rpc insertVTuber (VTuber) returns (TaskResult);
+    rpc insertAffiliation (Affiliation) returns (TaskResult);
+}
+
+message Live {
+    string VideoId = 1;
+    string ChannelId = 2;
+    string Title = 3;
+    string Description = 4;
+    string ThumbnailUrl = 5;
+    string published_at = 6;
+    string UpdatedAt = 7;
+
+    string WillStartAt = 8; // status in upcoming
+    string StartedAt = 9; // status in live
+    enum Status {
+        UPCOMING = 0;
+        LIVE = 1;
+    }
+}
+
+message Channel {
+    string ChannelId = 1;
+    string VTuberId = 2;
+    string LogoUrl = 3;
+    string PublishedAt = 4;
+    string Description = 5;
+}
+
+message VTuber {
+    string VTuberId = 1;
+    string Name = 2;
+    string Affiliation = 3;
+}
+
+message Affiliation {
+    string AffiliationId = 1;
+    string Name = 2;
+}
+
+message TaskResult {
+    string Message = 1;
+}

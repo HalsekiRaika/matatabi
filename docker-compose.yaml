@@ -1,0 +1,45 @@
+version: '3'
+services:
+  postgres_db:
+    image: postgres:alpine
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: matatabi
+      POSTGRES_PASSWORD: crazycat0010
+      POSTGRES_HOST_AUTH_METHOD: trust
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    environment:
+      ADMINER_DESIGN: hydra
+  # pgadmin:
+  #   image: dpage/pgadmin4:latest
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: reirokusanami.rdh@gmail.com
+  #     PGADMIN_DEFAULT_PASSWORD: crazycat0020
+  #     PGADMIN_CONFIG_SERVER_MODE: "False"
+  #     PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+  #   ports:
+  #     - "8070:80"
+  #   volumes:
+  #     - ./pgadmin_default_servers.json:/pgadmin4/servers.json
+
+  meilisearch:
+    image: getmeili/meilisearch
+    restart: on-failure
+    ports:
+      - 7700:7700
+    volumes:
+      - meilisearch-data:/data.ms
+    environment:
+      MEILI_MASTER_KEY: matatabi
+
+volumes:
+  meilisearch-data:
+  db-data:

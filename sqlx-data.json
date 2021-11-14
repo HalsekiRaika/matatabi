@@ -1,0 +1,36 @@
+{
+  "db": "PostgreSQL",
+  "b181c76cbc2a04bf24e0abf9d8d50f05c744578cf42fb7835f1e1699153affd5": {
+    "query": "\n            INSERT INTO lives (\n                video_id, channel_id,\n                title, description,\n                published_at, updated_at,\n                will_start_at, started_at,\n                thumbnail_url\n            )\n            VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8, $9\n            )\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Text",
+          "Timestamp",
+          "Timestamp",
+          "Timestamp",
+          "Timestamp",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "e4a9c9c856309cdd72deb1ab3f1531a5b0b883bc2bcf2fe95ab377581f6fcdc8": {
+    "query": "\n            INSERT INTO affiliations (\n                affiliation_id, name\n            )\n            VALUES (\n                $1, $2\n            )\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar"
+        ]
+      },
+      "nullable": []
+    }
+  }
+}

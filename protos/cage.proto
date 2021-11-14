@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package cage;
+
+service CageApi {
+    rpc createAccount(AccountConfig) returns (Token);
+    rpc verification(Token) returns (Account);
+}
+
+message Token {
+    string id = 1;
+}
+
+message AccountConfig {
+    string user_name = 1;
+    string user_pass = 2;
+}
+
+message Account {
+    string user_id = 1;
+    string user_name = 2;
+    enum AccountStatus {
+        ACTIVE   = 0;
+        INACTIVE = 1;
+        BLOCKED  = 2;
+    }
+}
