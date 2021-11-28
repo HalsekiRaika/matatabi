@@ -1,2 +1,7 @@
 .mysql
+/.idea
 /target
+.idea/discord.xml
+.idea/matatabi.iml
+.idea/modules.xml
+.idea/vcs.xml

@@ -9,6 +9,10 @@ pub struct Affiliations {
 
 #[allow(dead_code, unused_variables)]
 impl Affiliations {
+    pub fn new(id: i64, name: impl Into<String>) -> Affiliations {
+        Self { affiliation_id: AffiliationId(id), name: name.into() }
+    }
+
     pub async fn insert(
         &self, transaction: &mut sqlx::Transaction<'_, Postgres>
     ) -> Result<(), sqlx::Error> {
@@ -21,7 +25,7 @@ impl Affiliations {
                 $1, $2
             )
             ",
-            self.affiliation_id.clone() as AffiliationId,
+            self.affiliation_id as AffiliationId,
             &self.name
         )
         .execute(&mut *transaction)
@@ -32,16 +36,16 @@ impl Affiliations {
 
     pub async fn update_name(
         id: AffiliationId,
-        name: String, 
+        name: impl Into<String>,
         transaction: &mut sqlx::Transaction<'_, Postgres>
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
             "
-            UPDATE affiliations 
+            UPDATE affiliations
             SET name = $1
             WHERE affiliation_id = $2
             ",
-            &name,
+            &name.into(),
             id as AffiliationId
         )
         .execute(&mut *transaction)
@@ -49,31 +53,29 @@ impl Affiliations {
         Ok(())
     }
 
-    pub async fn get_id<'a, 'b, E>(
-        name: String,
+    pub async fn fetch_id<'a, 'b, E>(
+        name: impl Into<String>,
         executor: E
-    ) -> Result<Option<Self>, sqlx::Error> 
+    ) -> Result<Option<Self>, sqlx::Error>
       where E: sqlx::Executor<'a, Database = Postgres> {
+        let name_a = name.into().clone();
         let obj = sqlx::query!(
             "
             SELECT affiliation_id FROM affiliations WHERE name = $1
             ",
-            name.clone()
+            &name_a
         )
         .fetch_optional(executor)
         .await?;
 
         if let Some(searched) = obj {
-            Ok(Some(Affiliations {
-                affiliation_id: AffiliationId(searched.affiliation_id),
-                name
-            }))
+            Ok(Some(Affiliations::new(0 /*searched.affiliation_id*/, name_a)))
         } else {
             Ok(None)
         }
     }
 
-    pub async fn get_name<'a, 'b, E>(
+    pub async fn fetch_name<'a, 'b, E>(
         id: AffiliationId,
         executor: E
     ) -> Result<Option<Self>, sqlx::Error>
@@ -82,22 +84,19 @@ impl Affiliations {
             "
             SELECT name FROM affiliations WHERE affiliation_id = $1
             ",
-            id.clone() as AffiliationId
+            id as AffiliationId
         )
         .fetch_optional(executor)
         .await?;
 
         if let Some(searched) = obj {
-            Ok(Some(Affiliations {
-                affiliation_id: id,
-                name: searched.name
-            }))
+            Ok(Some(Affiliations::new(id.0, searched.name)))
         } else {
             Ok(None)
         }
     }
 
-    pub async fn get_all_id<'a, 'b, E>(
+    pub async fn fetch_all_id<'a, 'b, E>(
         executor: E
     ) -> Result<Vec<AffiliationId>, sqlx::Error>
       where E: sqlx::Executor<'a, Database = Postgres> {
@@ -110,28 +109,27 @@ impl Affiliations {
         .await?;
 
         let mut items: Vec<AffiliationId> = Vec::new();
-        for obj in objs {
-            items.push(AffiliationId(obj.affiliation_id));
+        for item in objs {
+            items.push(AffiliationId(item.affiliation_id));
         }
-        
+
         Ok(items)
     }
 
     pub async fn exists<'a, 'b, E>(
         &self,
         executor: E
-    ) -> Result<bool, sqlx::Error> 
+    ) -> Result<bool, sqlx::Error>
       where E: sqlx::Executor<'a, Database = Postgres> + Clone {
         let (a, b) = tokio::join!(
-            Affiliations::get_id(self.name.clone(), executor.clone()),
-            Affiliations::get_name(self.affiliation_id.clone(), executor.clone())
+            Affiliations::fetch_id(self.name.clone(), executor.clone()),
+            Affiliations::fetch_name(self.affiliation_id.clone(), executor.clone())
         );
-        let none_aff: Affiliations = Affiliations { 
-            affiliation_id: AffiliationId("none".to_string()),
-            name: "none_name".to_string() 
-        };
+
+        let none_aff: Affiliations = Affiliations::new(0, "none_name");
+
         let (i, j) = (a?.unwrap_or(none_aff.clone()), b?.unwrap_or(none_aff.clone()));
-        if (i != none_aff.clone() || j != none_aff.clone()) || (i == j) { 
+        if (i != none_aff.clone() || j != none_aff.clone()) || (i == j) {
             Ok(true)
         } else {
             Ok(false)

@@ -1,17 +1,17 @@
 use serde::{Serialize, Deserialize};
 use sqlx::Type;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[sqlx(transparent)]
-pub struct AffiliationId(pub String);
+pub struct AffiliationId(pub i64);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[sqlx(transparent)]
 pub struct ChannelId(pub String);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[sqlx(transparent)]
-pub struct LiverId(pub String);
+pub struct LiverId(pub i64);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[sqlx(transparent)]

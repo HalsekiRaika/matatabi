@@ -7,10 +7,11 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix = "0.12.0"
 actix-web = "3.3.2"
 actix-rt = "1.1.1"
 actix-cors = "0.5.4"
+actix-multipart = "0.3.0"
+actix-ratelimit = "0.3.1"
 
 serde = "1.0.130"
 serde_json = "1.0.68"
@@ -25,6 +26,7 @@ tokio-test = "0.4.2"
 
 meilisearch-sdk = "0.11.0"
 reqwest = { version = "0.11.6", features = ["json"] }
+openssl = "0.10"
 
 sqlx = { version = "0.5.9", features = ["runtime-actix-native-tls", "postgres", "chrono", "offline", "macros", "migrate"] }
 

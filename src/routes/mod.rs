@@ -2,7 +2,7 @@ pub mod authenticate;
 pub mod upcoming;
 pub mod nf;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(thiserror::Error, Debug)]
 pub enum ApiError {
     /// FEATURE - Deprecate (next ver)
     #[error("General Error")]

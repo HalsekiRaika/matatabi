@@ -58,7 +58,7 @@ pub async fn migration() -> Result<(), sqlx::Error> {
 
     for migration in migrator.iter() {
         if migration.version > current_ver {
-            println!("migrate {} to {}", ver, migration.version);
+            //println!("migrate {} to {}", ver, migration.version);
             let applied = migrate_connection.apply(migration).await?;
             logger.debug(&format!("Applied migration {} to {}: {}ms", current_ver, migration.version, applied.as_millis()));
         } else {

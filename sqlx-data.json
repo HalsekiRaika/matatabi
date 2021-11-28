@@ -1,5 +1,76 @@
 {
   "db": "PostgreSQL",
+  "08aa30823942d39108137deab22b1f21f1a3ce00f37496981091be59491781d8": {
+    "query": "\n            SELECT name FROM affiliations WHERE affiliation_id = $1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "name",
+          "type_info": "Varchar"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "0b81c9553486599f928e6ad1eee2107c459d556574291495c9fc05f4e2db3eaf": {
+    "query": "\n            UPDATE affiliations\n            SET name = $1\n            WHERE affiliation_id = $2\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "4910e96530f15e50af753a3189fda3898b5aa9600ae70cf4e26b23509ca21262": {
+    "query": "\n            SELECT affiliation_id FROM affiliations\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "affiliation_id",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "4e7c9d9b859714d0f184884479c78f1e3a3d223a471d8706e250bfdbcabfa27c": {
+    "query": "\n            SELECT affiliation_id FROM affiliations WHERE name = $1\n            ",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "affiliation_id",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
   "b181c76cbc2a04bf24e0abf9d8d50f05c744578cf42fb7835f1e1699153affd5": {
     "query": "\n            INSERT INTO lives (\n                video_id, channel_id,\n                title, description,\n                published_at, updated_at,\n                will_start_at, started_at,\n                thumbnail_url\n            )\n            VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8, $9\n            )\n            ",
     "describe": {
@@ -26,7 +97,7 @@
       "columns": [],
       "parameters": {
         "Left": [
-          "Varchar",
+          "Int8",
           "Varchar"
         ]
       },

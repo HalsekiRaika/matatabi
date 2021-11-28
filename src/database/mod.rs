@@ -1,2 +1,2 @@
-pub mod mysql_database;
+pub mod postgres_database;
 pub mod models;

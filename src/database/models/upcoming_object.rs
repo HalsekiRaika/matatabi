@@ -17,7 +17,7 @@ pub struct Lives {
 
 impl Lives {
     pub async fn insert(
-        &self, 
+        &self,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
