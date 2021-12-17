@@ -1,7 +1,8 @@
 -- DROP TABLE affiliations;
 CREATE TABLE affiliations (
     affiliation_id BIGSERIAL NOT NULL PRIMARY KEY,
-    name VARCHAR(32) NOT NULL
+    name VARCHAR(32) NOT NULL,
+    update_signatures BIGSERIAL NOT NULL
 );
 
 -- DROP TABLE vtubers;
@@ -10,7 +11,8 @@ CREATE TABLE vtubers (
     affiliation BIGSERIAL,
       FOREIGN KEY (affiliation)
         REFERENCES affiliations(affiliation_id),
-    name VARCHAR(32) NOT NULL
+    name VARCHAR(32) NOT NULL,
+    update_signatures BIGSERIAL NOT NULL
 );
 
 -- DROP TABLE channels;
@@ -23,7 +25,8 @@ CREATE TABLE channels (
         REFERENCES vtubers(vtuber_id),
     logo_url VARCHAR(128) NOT NULL,
     published_at TIMESTAMP NOT NULL,
-    description TEXT
+    description TEXT,
+    update_signatures BIGSERIAL NOT NULL
 );
 
 -- DROP TABLE lives;
@@ -40,5 +43,6 @@ CREATE TABLE lives (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     will_start_at TIMESTAMP NULL,
     started_at TIMESTAMP NULL,
-    thumbnail_url VARCHAR(128)
+    thumbnail_url VARCHAR(128),
+    update_signatures BIGSERIAL NOT NULL
 );

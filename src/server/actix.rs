@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use crate::routes::nf;
 use crate::Logger;
 
-#[actix_rt::main]
+//#[actix_rt::main]
 pub async fn run_actix(pool: PgPool) -> Result<(), std::io::Error> {
     let logger = Logger::new(Some("Actix"));
     logger.info("Starting Actix Web Server!");

@@ -10,6 +10,7 @@ mod logger;
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     dotenv().ok();
+
     let logger = Logger::new(Some("Matatabi"));
     logger.info("Cats are crazy about Matatabi. ฅ^•ω•^ฅ");
 
@@ -20,7 +21,6 @@ async fn main() -> Result<(), std::io::Error> {
         .await
         .expect("An Error occurred by database connection pool.");
 
-    server::actix::run_actix(pool)
-        .expect("Failed to run webapi server thread.");
+    server::server_run(pool);
     Ok(())
 }

@@ -1,36 +1,29 @@
 {
   "db": "PostgreSQL",
-  "08aa30823942d39108137deab22b1f21f1a3ce00f37496981091be59491781d8": {
-    "query": "\n            SELECT name FROM affiliations WHERE affiliation_id = $1\n            ",
+  "0501fc56c85c123f64c61ebdaaf6de39012fdf098a71e8660583866c0c74195c": {
+    "query": "\n            SELECT affiliation_id, update_signatures FROM affiliations WHERE name = $1\n            ",
     "describe": {
       "columns": [
         {
           "ordinal": 0,
-          "name": "name",
-          "type_info": "Varchar"
+          "name": "affiliation_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "update_signatures",
+          "type_info": "Int8"
         }
       ],
       "parameters": {
         "Left": [
-          "Int8"
+          "Text"
         ]
       },
       "nullable": [
+        false,
         false
       ]
-    }
-  },
-  "0b81c9553486599f928e6ad1eee2107c459d556574291495c9fc05f4e2db3eaf": {
-    "query": "\n            UPDATE affiliations\n            SET name = $1\n            WHERE affiliation_id = $2\n            ",
-    "describe": {
-      "columns": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Int8"
-        ]
-      },
-      "nullable": []
     }
   },
   "4910e96530f15e50af753a3189fda3898b5aa9600ae70cf4e26b23509ca21262": {
@@ -51,28 +44,48 @@
       ]
     }
   },
-  "4e7c9d9b859714d0f184884479c78f1e3a3d223a471d8706e250bfdbcabfa27c": {
-    "query": "\n            SELECT affiliation_id FROM affiliations WHERE name = $1\n            ",
+  "493d3becde72014c773cf63a5bf450176cb183c621bee1557f70879389120737": {
+    "query": "\n            SELECT name, update_signatures FROM affiliations WHERE affiliation_id = $1\n            ",
     "describe": {
       "columns": [
         {
           "ordinal": 0,
-          "name": "affiliation_id",
+          "name": "name",
+          "type_info": "Varchar"
+        },
+        {
+          "ordinal": 1,
+          "name": "update_signatures",
           "type_info": "Int8"
         }
       ],
       "parameters": {
         "Left": [
-          "Text"
+          "Int8"
         ]
       },
       "nullable": [
+        false,
         false
       ]
     }
   },
-  "b181c76cbc2a04bf24e0abf9d8d50f05c744578cf42fb7835f1e1699153affd5": {
-    "query": "\n            INSERT INTO lives (\n                video_id, channel_id,\n                title, description,\n                published_at, updated_at,\n                will_start_at, started_at,\n                thumbnail_url\n            )\n            VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8, $9\n            )\n            ",
+  "6317f94c02e9e4b997ff653ba30970f2c2c0a1b2a941feea686dbb1a2297e73e": {
+    "query": "\n            INSERT INTO affiliations (\n                affiliation_id, name, update_signatures\n            )\n            VALUES (\n                $1, $2, $3\n            )\n            ",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Varchar",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "a9ae7f0ace854ea5fefe377b62f1c0a763d9be7cb2d657787488356a7b058835": {
+    "query": "\n            INSERT INTO lives (\n                video_id, channel_id,\n                title, description,\n                published_at, updated_at,\n                will_start_at, started_at,\n                thumbnail_url, update_signatures\n            )\n            VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10\n            )\n            ",
     "describe": {
       "columns": [],
       "parameters": {
@@ -85,20 +98,22 @@
           "Timestamp",
           "Timestamp",
           "Timestamp",
-          "Varchar"
+          "Varchar",
+          "Int8"
         ]
       },
       "nullable": []
     }
   },
-  "e4a9c9c856309cdd72deb1ab3f1531a5b0b883bc2bcf2fe95ab377581f6fcdc8": {
-    "query": "\n            INSERT INTO affiliations (\n                affiliation_id, name\n            )\n            VALUES (\n                $1, $2\n            )\n            ",
+  "c3ddfb96a16bc6e5e79b8f37beccf3d8ca6eb90e66a1a35f8a1044d9fe032653": {
+    "query": "\n            UPDATE affiliations\n            SET name = $1, update_signatures = $2\n            WHERE affiliation_id = $3\n            ",
     "describe": {
       "columns": [],
       "parameters": {
         "Left": [
+          "Varchar",
           "Int8",
-          "Varchar"
+          "Int8"
         ]
       },
       "nullable": []

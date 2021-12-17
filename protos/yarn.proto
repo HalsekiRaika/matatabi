@@ -3,10 +3,17 @@ syntax = "proto3";
 package yarn;
 
 service YarnApi {
-    rpc insertLive(Live) returns (TaskResult);
-    rpc insertChannel (Channel) returns (TaskResult);
-    rpc insertVTuber (VTuber) returns (TaskResult);
-    rpc insertAffiliation (Affiliation) returns (TaskResult);
+    // servers
+//    rpc insertResLive(Live) returns (stream TaskResult);
+//    rpc insertResChannel(Channel) returns (stream TaskResult);
+//    rpc insertResVTuber(VTuber) returns (stream TaskResult);
+//    rpc insertResAffiliation(Affiliation) returns (stream TaskResult);
+
+    // clients
+    rpc insertReqLive(stream Live) returns (TaskResult);
+    rpc insertReqChannel(stream Channel) returns (TaskResult);
+    rpc insertReqVTuber(stream VTuber) returns (TaskResult);
+    rpc insertReqAffiliation(stream Affiliation) returns (TaskResult);
 }
 
 message Live {
@@ -15,7 +22,7 @@ message Live {
     string Title = 3;
     string Description = 4;
     string ThumbnailUrl = 5;
-    string published_at = 6;
+    string PublishedAt = 6;
     string UpdatedAt = 7;
 
     string WillStartAt = 8; // status in upcoming
@@ -24,26 +31,44 @@ message Live {
         UPCOMING = 0;
         LIVE = 1;
     }
+    oneof OverrideSign {
+        sint64 override_at = 10;
+        Empty empty = 11;
+    }
 }
 
 message Channel {
     string ChannelId = 1;
-    string VTuberId = 2;
+    sint64 VTuberId = 2;
     string LogoUrl = 3;
     string PublishedAt = 4;
     string Description = 5;
+    oneof OverrideSign {
+        sint64 override_at = 6;
+        Empty empty = 7;
+    }
 }
 
 message VTuber {
-    string VTuberId = 1;
+    sint64 VTuberId = 1;
     string Name = 2;
-    string Affiliation = 3;
+    uint64 AffiliationId = 3;
+    oneof OverrideSign {
+        sint64 override_at = 6;
+        Empty empty = 7;
+    }
 }
 
 message Affiliation {
-    string AffiliationId = 1;
+    sint64 AffiliationId = 1;
     string Name = 2;
+    oneof OverrideSign {
+        sint64 override_at = 3;
+        Empty empty = 4;
+    }
 }
+
+message Empty {}
 
 message TaskResult {
     string Message = 1;

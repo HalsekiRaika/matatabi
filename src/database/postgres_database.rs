@@ -54,7 +54,7 @@ pub async fn migration() -> Result<(), sqlx::Error> {
     // but no way to get the current version, so I decided to use the deprecated method.
     #[allow(deprecated)]
     let (current_ver, _) = migrate_connection.version().await?.unwrap_or((1, false));
-    let ver = ver.unwrap_or(1);
+    let _ver = ver.unwrap_or(1);
 
     for migration in migrator.iter() {
         if migration.version > current_ver {
