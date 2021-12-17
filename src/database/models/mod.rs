@@ -1,5 +1,6 @@
-pub mod affiliation_object;
 pub mod id_object;
+pub mod affiliation_object;
+pub mod livers_object;
 pub mod upcoming_object;
 pub mod update_signature;
 
@@ -10,6 +11,6 @@ pub trait Printable {
 #[async_trait::async_trait]
 pub trait Updatable {
     fn apply_signature(&self, sign: i64) -> Self;
-    fn isEmptySign(&self) -> bool;
+    fn is_empty_sign(&self) -> bool;
     async fn can_update(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<bool, sqlx::Error>;
 }

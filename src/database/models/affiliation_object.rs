@@ -159,7 +159,7 @@ impl Updatable for Affiliations {
         a
     }
 
-    fn isEmptySign(&self) -> bool {
+    fn is_empty_sign(&self) -> bool {
         self.update_signatures.0 <= 1
     }
 

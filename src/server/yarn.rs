@@ -1,7 +1,7 @@
 use std::net::ToSocketAddrs;
 use futures::StreamExt;
 
-use sqlx::Postgres;
+use sqlx::{Error, Postgres};
 use tokio::time::Instant;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status, Streaming};
@@ -108,7 +108,7 @@ impl YarnUpdater {
                 item.apply_signature(UpdateSignature::default().as_i64())
                     .insert(&mut transaction)
                     .await;
-            } else if !item.isEmptySign() && item.can_update(&mut transaction).await.unwrap() {
+            } else if !item.is_empty_sign() && item.can_update(&mut transaction).await.unwrap() {
                 item.update(&mut transaction)
                     .await;
             }
