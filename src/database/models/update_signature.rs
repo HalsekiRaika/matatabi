@@ -19,6 +19,6 @@ impl Default for UpdateSignature {
             .to_string()
             .parse()
             .unwrap();
-        Self { 0: a,}
+        Self { 0: a }
     }
 }

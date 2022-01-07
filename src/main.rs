@@ -7,9 +7,11 @@ mod server;
 mod routes;
 mod logger;
 
-#[tokio::main]
+//#[tokio::main]
+#[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {
     dotenv().ok();
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let logger = Logger::new(Some("Matatabi"));
     logger.info("Cats are crazy about Matatabi. ฅ^•ω•^ฅ");
@@ -21,6 +23,7 @@ async fn main() -> Result<(), std::io::Error> {
         .await
         .expect("An Error occurred by database connection pool.");
 
-    server::server_run(pool);
+    server::server_run(pool).await;
+
     Ok(())
 }

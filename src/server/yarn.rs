@@ -1,18 +1,17 @@
 use std::net::ToSocketAddrs;
 use futures::StreamExt;
 
-use sqlx::{Error, Postgres};
+use sqlx::Postgres;
 use tokio::time::Instant;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status, Streaming};
 use yarn::yarn_api_server::{YarnApiServer, YarnApi};
 use yarn::{Affiliation, Channel, VTuber, Live, TaskResult};
 
+use crate::database::models::{Printable, Updatable, Transactable};
 use crate::database::models::affiliation_object::Affiliations;
-use crate::database::models::{Printable, Updatable};
 use crate::database::models::upcoming_object::Lives;
 use crate::database::models::update_signature::UpdateSignature;
-use crate::database::transactable::Transactable;
 use crate::logger::Logger;
 use crate::server::yarn::yarn::affiliation::OverrideSign;
 
@@ -35,31 +34,7 @@ type YarnResult<T> = Result<Response<T>, Status>;
 #[tonic::async_trait]
 impl YarnApi for YarnUpdater {
     async fn insert_req_live(&self, req: Request<Streaming<Live>>) -> YarnResult<TaskResult> {
-        let logger = Logger::new(Some("yarn / live"));
-        logger.info(&format!("Yarn Updater connected from: {}", req.remote_addr().unwrap()));
-
-        let mut transaction = self.pool.begin().await
-            .expect("cannot begin transaction");
-
-        let mut update_data_stream = req.into_inner();
-        let mut receive_count = 0;
-        let dur_now = Instant::now();
-
-        while let Some(live_data) = update_data_stream.next().await {
-            let live_data = live_data?;
-            logger.info(&format!("Receive Data : {}", live_data.video_id.clone()));
-
-            receive_count += 1;
-
-            Lives::from(live_data).insert(&mut transaction).await.unwrap();
-        }
-
-        let elapsed = dur_now.elapsed().as_millis();
-        let response = TaskResult {
-            message: format!("Data Received and insert database. item: {}/ elapsed: {}", &receive_count, &elapsed)
-        };
-
-        Ok(Response::new(response))
+        Err(Status::unimplemented("client task is not implemented."))
     }
 
     async fn insert_req_channel(&self, req: Request<Streaming<Channel>>) -> YarnResult<TaskResult> {
@@ -77,7 +52,7 @@ impl YarnApi for YarnUpdater {
 
 impl YarnUpdater {
     async fn transition_insert<R, T>(&self, req: Request<Streaming<R>>) -> YarnResult<TaskResult>
-      where T: Transactable + Printable + Updatable + From<R> {
+      where T: Transactable<T> + Printable + Updatable + From<R> {
         let logger = Logger::new(Some("Yarn"));
         logger.info(&format!("Yarn Updater connected from: {}", req.remote_addr().unwrap()));
 
@@ -103,18 +78,24 @@ impl YarnUpdater {
         };
 
         let mut transaction = self.pool.begin().await.unwrap();
+        let logger = Logger::new(Some("Transaction"));
         for item in &insertion {
             if !item.exists(&mut transaction).await.unwrap() {
-                item.apply_signature(UpdateSignature::default().as_i64())
+                let insert = item.apply_signature(UpdateSignature::default().as_i64())
                     .insert(&mut transaction)
-                    .await;
+                    .await.expect("Failed to data insertion.");
+                logger.info(&format!("| INSERT   | {} + {}", insert.get_secondary_name(), insert.get_signature()));
             } else if !item.is_empty_sign() && item.can_update(&mut transaction).await.unwrap() {
-                item.update(&mut transaction)
-                    .await;
+                let (old, update) = item.update(&mut transaction)
+                    .await.expect("Failed to data update.");
+                logger.info(&format!("| UPDATE   | {} : {} > {}",
+                    &update.get_secondary_name(), &old.get_primary_name(), &update.get_primary_name()));
             }
         }
 
-        transaction.commit().await;
+        transaction.commit().await.expect("Failed commit.");
+
+        let logger = Logger::new(Some("Yarn"));
         logger.info("+----------+---------------------------+");
         let elapsed = dur_now.elapsed().as_millis();
 
@@ -145,17 +126,18 @@ impl From<Affiliation> for Affiliations {
 
 pub async fn run_yarn(pool: sqlx::Pool<Postgres>) -> Result<(), Box<dyn std::error::Error>> {
     let logger = Logger::new(Some("Yarn"));
-    logger.info("Starting yarn grpc update server!");
     let bind_ip = "[::1]:50051".to_socket_addrs()
         .unwrap().next()
         .unwrap();
     let server = YarnUpdater::new(pool);
-
-    Server::builder()
-        .add_service(YarnApiServer::new(server))
-        .serve(bind_ip)
-        .await
-        .unwrap();
+    tokio::spawn(async move {
+        logger.info("Starting yarn grpc update server!");
+        Server::builder()
+            .add_service(YarnApiServer::new(server))
+            .serve(bind_ip)
+            .await
+            .expect("Server failed to start...")
+    });
 
     Ok(())
 }

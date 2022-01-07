@@ -1,11 +1,9 @@
 pub mod actix;
-pub mod auth;
+pub mod middleware;
 pub mod yarn;
 
-#[actix_rt::main]
+#[allow(unused_must_use)]
 pub async fn server_run(pool: sqlx::PgPool) {
-    let (_a, _b) = tokio::join!(
-        actix::run_actix(pool.clone()),
-        yarn::run_yarn(pool.clone())
-    );
+    yarn::run_yarn(pool.clone()).await;
+    actix::run_actix(pool.clone()).await;
 }

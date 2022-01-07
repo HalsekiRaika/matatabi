@@ -1,6 +1,17 @@
 pub mod authenticate;
 pub mod upcoming;
 pub mod nf;
+pub mod affiliation;
+
+pub async fn index() -> actix_web::HttpResponse {
+    let data = serde_json::json!({
+        "api_name": "matatabi",
+        "major_version": dotenv::var("MAJOR_API_VERSION").ok(),
+        "minor_version": dotenv::var("MINOR_API_VERSION").ok(),
+        "repository": "https://github.com/ReiRokusanami0010/matatabi",
+    });
+    actix_web::HttpResponse::Ok().json(data)
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum ApiError {

@@ -7,10 +7,8 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "3.3.2"
-actix-rt = "1.1.1"
-actix-cors = "0.5.4"
-actix-multipart = "0.3.0"
+actix-web = "4.0.0-beta.13"
+actix-cors = "0.6.0-beta.4"
 actix-ratelimit = "0.3.1"
 
 serde = "1.0.130"
@@ -23,7 +21,7 @@ tonic = { version = "0.6.1", features = ["tls", "compression"] }
 prost = "0.9.0"
 prost-types = "0.9.0"
 futures = "0.3.18"
-tokio = { version = "1.12.0", features = ["rt", "rt-multi-thread", "macros"] }
+tokio = { version = "1.14.0", features = ["rt", "rt-multi-thread", "macros"] }
 tokio-test = "0.4.2"
 
 meilisearch-sdk = "0.11.0"
@@ -32,6 +30,7 @@ openssl = "0.10"
 
 sqlx = { version = "0.5.9", features = ["runtime-tokio-native-tls", "postgres", "chrono", "offline", "macros", "migrate"] }
 
+env_logger = "0.9.0"
 dotenv = "0.15.0"
 thiserror = "1.0.30"
 yansi = "0.5.0"
