@@ -1,31 +1,33 @@
 use serde::{Serialize, Deserialize};
-use sqlx::Type;
+use sqlx::{FromRow, Type};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Type, FromRow)]
 #[sqlx(transparent)]
 pub struct AffiliationId(pub i64);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type, FromRow)]
 #[sqlx(transparent)]
 pub struct ChannelId(pub String);
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Type, FromRow)]
 #[sqlx(transparent)]
 pub struct LiverId(pub i64);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type, FromRow)]
 #[sqlx(transparent)]
 pub struct VideoId(pub String);
 
 use crate::models;
 
 impl From<models::affiliation::AffiliationId> for AffiliationId {
+    /// Use to transform webapi model to database model
     fn from(id: models::affiliation::AffiliationId) -> Self {
         AffiliationId(id.0)
     }
 }
 
 impl From<AffiliationId> for models::affiliation::AffiliationId {
+    /// Use to transform database model to webapi model
     fn from(id: AffiliationId) -> Self {
         models::affiliation::AffiliationId(id.0)
     }

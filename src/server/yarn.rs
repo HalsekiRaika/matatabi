@@ -61,42 +61,51 @@ impl YarnUpdater {
         let mut receive_count = 0;
         let dur_now = Instant::now();
 
-        logger.info("+----------+---------------------------+");
         while let Some(receive) = update_data_stream.next().await {
             let receive = receive?;
             let receive = T::from(receive);
-            logger.info(&format!("| RECEIVED | {}", receive.get_primary_name()));
+            logger.info(&format!("| RECEIVE  | {}", receive.get_primary_name()));
             insertion.push(receive);
             receive_count += 1;
         }
-        logger.info("+----------+---------------------------+");
         let elapsed = dur_now.elapsed().as_millis();
         let dur_now = Instant::now();
 
         let response = TaskResult {
-            message: format!("Data Received and insert database. item: {} / elapsed: {}ms", &receive_count, &elapsed)
+            message: format!("Received. item: {} / elapsed: {}ms", &receive_count, &elapsed)
         };
 
         let mut transaction = self.pool.begin().await.unwrap();
         let logger = Logger::new(Some("Transaction"));
         for item in &insertion {
             if !item.exists(&mut transaction).await.unwrap() {
-                let insert = item.apply_signature(UpdateSignature::default().as_i64())
-                    .insert(&mut transaction)
-                    .await.expect("Failed to data insertion.");
+                let insert = match item.apply_signature(UpdateSignature::default().as_i64()).insert(&mut transaction).await {
+                    Ok(insert) => insert,
+                    Err(_) => return Err(Status::internal("Failed to data insert."))
+                };
                 logger.info(&format!("| INSERT   | {} + {}", insert.get_secondary_name(), insert.get_signature()));
             } else if !item.is_empty_sign() && item.can_update(&mut transaction).await.unwrap() {
-                let (old, update) = item.update(&mut transaction)
-                    .await.expect("Failed to data update.");
+                let (old, update) = match item.update(&mut transaction).await {
+                    Ok((old, update)) => (old, update),
+                    Err(_) => return Err(Status::internal("Failed to data update."))
+                };
                 logger.info(&format!("| UPDATE   | {} : {} > {}",
                     &update.get_secondary_name(), &old.get_primary_name(), &update.get_primary_name()));
+            } else if item.exists(&mut transaction).await.unwrap() && item.get_signature() < 0 {
+                let delete = match item.delete(&mut transaction).await {
+                    Ok(delete) => delete,
+                    Err(_) => return Err(Status::internal("Failed to data delete."))
+                };
+                logger.caut(&format!("| DELETE   | {}", delete));
             }
         }
 
-        transaction.commit().await.expect("Failed commit.");
+        match transaction.commit().await {
+            Ok(_) => (),
+            Err(_) => return Err(Status::internal("Failed to commit when inserting data in the database."))
+        }
 
         let logger = Logger::new(Some("Yarn"));
-        logger.info("+----------+---------------------------+");
         let elapsed = dur_now.elapsed().as_millis();
 
         logger.info(&format!("Transaction elapsed {}ms", &elapsed));
