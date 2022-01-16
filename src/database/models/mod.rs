@@ -4,6 +4,9 @@ pub mod livers_object;
 pub mod upcoming_object;
 pub mod update_signature;
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct RawString(String);
+
 pub trait Printable {
     fn get_primary_name(&self) -> String;
     fn get_secondary_name(&self) -> String;

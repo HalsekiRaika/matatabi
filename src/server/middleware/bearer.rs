@@ -1,12 +1,12 @@
 use std::borrow::Cow;
 use std::error::Error;
-use std::fmt::{Debug, Display, format, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use actix_web::dev::ServiceRequest;
 use actix_web::http::header::{HeaderName, HeaderValue, InvalidHeaderValue, TryIntoHeaderValue};
 use actix_web::http::StatusCode;
 use actix_web::{HttpMessage, HttpResponse, ResponseError};
 use actix_web::body::BoxBody;
-use actix_web::web::{BufMut, BytesMut, Header};
+use actix_web::web::{BufMut, BytesMut};
 use futures::future::{Ready, ready};
 
 const BEARER_SC: &str = "Bearer";

@@ -4,10 +4,9 @@ use actix_web::dev::ServiceRequest;
 use actix_web::web::Data;
 use sqlx::PgPool;
 use tonic::transport::Channel;
-use crate::routes::index;
+use crate::routes;
 use crate::Logger;
 use crate::server::middleware::bearer::Credentials;
-use crate::server::middleware::cage;
 use crate::server::middleware::cage::cage_api_client::CageApiClient;
 use crate::server::middleware::cage_middleware::{CageAuth, CageMiddlewareTaskResult};
 
@@ -30,7 +29,8 @@ pub async fn run_actix(pool: PgPool) -> Result<(), std::io::Error> {
             .wrap(cors_conf)
             .wrap(CageAuth::new(verification_server_conf.clone(), validator))
             .app_data(Data::new(pool.clone()))
-            .default_service(web::get().to(index))
+            .configure(routes::routing)
+            .default_service(web::get().to(routes::index))
     })
     .bind("127.0.0.1:8000")?
     .run()

@@ -1,19 +1,15 @@
-use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::pin::Pin;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use actix_web::body::{EitherBody, MessageBody};
 use actix_web::dev::{Service, Transform, ServiceRequest, ServiceResponse};
 use actix_web::Error;
-use actix_web::error::ParseError;
-use actix_web::http::header::{Header, HeaderValue};
 use futures::{Future, ready, TryFutureExt};
 use futures::future::{ok, Ready};
 use tonic::transport::Channel;
-use crate::Logger;
-use crate::server::middleware::bearer::{Credentials, Bearer, BearerHeader};
+use crate::server::middleware::bearer::Credentials;
 use crate::server::middleware::cage::cage_api_client::CageApiClient;
 
 pub type CageMiddlewareTaskResult = Result<ServiceRequest, actix_web::Error>;
@@ -86,6 +82,7 @@ impl<S, B, F, O> Service<ServiceRequest> for CageAuthMiddleware<S, F, O>
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let service = Rc::clone(&self.service);
+        #[allow(unused_mut)]
         let mut client = self.validator_client.clone();
         let validator = self.validator.clone();
         Box::pin(async move {

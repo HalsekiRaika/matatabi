@@ -33,11 +33,11 @@ type YarnResult<T> = Result<Response<T>, Status>;
 // Todo: Sending one request per update task is not very efficient, so change to Stream.
 #[tonic::async_trait]
 impl YarnApi for YarnUpdater {
-    async fn insert_req_live(&self, req: Request<Streaming<Live>>) -> YarnResult<TaskResult> {
+    async fn insert_req_live(&self, _req: Request<Streaming<Live>>) -> YarnResult<TaskResult> {
         Err(Status::unimplemented("client task is not implemented."))
     }
 
-    async fn insert_req_channel(&self, req: Request<Streaming<Channel>>) -> YarnResult<TaskResult> {
+    async fn insert_req_channel(&self, _req: Request<Streaming<Channel>>) -> YarnResult<TaskResult> {
         Err(Status::unimplemented("client task is not implemented."))
     }
 
@@ -45,7 +45,7 @@ impl YarnApi for YarnUpdater {
         self.transition_insert::<Affiliation, Affiliations>(req).await
     }
 
-    async fn insert_req_v_tuber(&self, req: Request<Streaming<VTuber>>) -> YarnResult<TaskResult> {
+    async fn insert_req_v_tuber(&self, _req: Request<Streaming<VTuber>>) -> YarnResult<TaskResult> {
         Err(Status::unimplemented("client task is not implemented."))
     }
 }
@@ -75,7 +75,10 @@ impl YarnUpdater {
             message: format!("Received. item: {} / elapsed: {}ms", &receive_count, &elapsed)
         };
 
-        let mut transaction = self.pool.begin().await.unwrap();
+        let mut transaction = match self.pool.begin().await {
+            Ok(transaction) => transaction,
+            Err(_) => return Err(Status::failed_precondition("Failed to begin build transaction."))
+        };
         let logger = Logger::new(Some("Transaction"));
         for item in &insertion {
             if !item.exists(&mut transaction).await.unwrap() {

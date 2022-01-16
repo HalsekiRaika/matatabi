@@ -1,6 +1,4 @@
-pub mod authenticate;
 pub mod upcoming;
-pub mod nf;
 pub mod affiliation;
 
 pub async fn index() -> actix_web::HttpResponse {
@@ -13,17 +11,35 @@ pub async fn index() -> actix_web::HttpResponse {
     actix_web::HttpResponse::Ok().json(data)
 }
 
+pub fn routing(serv_conf: &mut actix_web::web::ServiceConfig) {
+    serv_conf.service(
+        actix_web::web::scope("/v0")
+            .configure(affiliation_route)
+    );
+}
+
+fn affiliation_route(serv_conf: &mut actix_web::web::ServiceConfig) {
+    serv_conf.service(affiliation::get_affiliations);
+
+    serv_conf.service(
+        actix_web::web::scope("affiliations")
+    );
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum ApiError {
     /// FEATURE - Deprecate (next ver)
     #[error("General Error")]
-    Error(String)
+    Error(String),
+    #[error("Internal Server Error from Database: {0}")]
+    SqlxDatabaseError(#[from] sqlx::Error)
 }
 
 impl actix_web::ResponseError for ApiError {
     fn status_code(&self) -> actix_web::http::StatusCode {
         match self {
-            ApiError::Error(..) => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
+            ApiError::Error(..) => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            ApiError::SqlxDatabaseError(..) => actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
         }
     }
 
@@ -31,7 +47,8 @@ impl actix_web::ResponseError for ApiError {
         actix_web::web::HttpResponse::build(self.status_code()).json(
             crate::models::error::ApiError {
                 error: match self {
-                    ApiError::Error(..) => "general_error"
+                    ApiError::Error(..) => "general_error",
+                    ApiError::SqlxDatabaseError(..) => "database_error"
                 },
                 description: &self.to_string()
             }
