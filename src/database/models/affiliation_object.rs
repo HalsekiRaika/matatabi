@@ -2,7 +2,7 @@ use super::id_object::AffiliationId;
 use super::update_signature::UpdateSignature;
 use sqlx::{Error, FromRow, Row, Transaction};
 use sqlx::postgres::Postgres;
-use crate::database::models::{Printable, Updatable, Transactable};
+use crate::database::models::{Printable, Updatable, Transactable, RawString};
 
 #[derive(Debug, Clone, PartialEq, Eq, FromRow)]
 pub struct Affiliations {
@@ -37,18 +37,46 @@ impl Affiliations {
     pub fn get_name(&self) -> &str { &self.name }
 }
 
+/// The reason for using sqlx::Executor<'a, Database = Postgres>
+/// is that it is an abstraction to support the types provided by the actix data propagation.
 impl Affiliations {
-    pub async fn fetch_id_from_name(
+    pub async fn fetch_id_from_name<'a, E>(
         name: impl Into<String>,
-        transaction: &mut Transaction<'_, Postgres>
-    ) -> Result<Option<AffiliationId>, sqlx::Error> {
+        transaction: E
+    ) -> Result<Option<AffiliationId>, sqlx::Error>
+      where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL
         let id = sqlx::query_as::<_, AffiliationId>(r#"
-            SELECT affiliation_id FROM affiliations WHERE name = $1
+            SELECT affiliation_id FROM affiliations WHERE name LIKE $1
         "#).bind(name.into())
-           .fetch_optional(&mut *transaction)
-            .await?;
+           .fetch_optional(transaction)
+           .await?;
         Ok(id)
+    }
+
+    pub async fn fetch_name_from_id<'a, E>(
+        id: AffiliationId,
+        transaction: E
+    ) -> Result<Option<String>, sqlx::Error>
+      where E: sqlx::Executor<'a, Database = Postgres> + Copy{
+        // language=SQL
+        let name = sqlx::query_as::<_, RawString>(r#"
+            SELECT name FROM affiliations WHERE affiliation_id = $1
+        "#).bind(id.0)
+           .fetch_optional(transaction)
+           .await?;
+
+        Ok(Some(name.unwrap().0))
+    }
+
+    pub async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
+      where E: sqlx::Executor<'a, Database = Postgres> + Copy {
+        // language=SQL
+        let all = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM affiliations
+        "#).fetch_all(transaction)
+           .await?;
+        Ok(all)
     }
 }
 
@@ -159,23 +187,15 @@ impl Updatable for Affiliations {
 impl Transactable<Affiliations> for Affiliations {
     async fn insert(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, Error> {
         // language=SQL
-        let insert: Affiliations = sqlx::query_as::<_, Self>(
-            r#"
-            INSERT INTO affiliations (
-                affiliation_id, name, update_signatures
-            )
-            VALUES (
-                $1, $2, $3
-            )
+        let insert: Affiliations = sqlx::query_as::<_, Self>(r#"
+            INSERT INTO affiliations (affiliation_id, name, update_signatures)
+            VALUES ($1, $2, $3)
             RETURNING *
-            "#
-        )
-        .bind(self.affiliation_id.0)
-        .bind(&self.name)
-        .bind(self.update_signatures.0)
-        .fetch_one(&mut *transaction)
-        .await?;
-
+        "#).bind(self.affiliation_id.0)
+           .bind(&self.name)
+           .bind(self.update_signatures.0)
+           .fetch_one(&mut *transaction)
+           .await?;
         Ok(insert)
     }
 
