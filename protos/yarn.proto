@@ -31,10 +31,7 @@ message Live {
         UPCOMING = 0;
         LIVE = 1;
     }
-    oneof OverrideSign {
-        sint64 override_at = 10;
-        Empty empty = 11;
-    }
+    sint64 override_at = 10;
 }
 
 message Channel {
@@ -43,32 +40,22 @@ message Channel {
     string LogoUrl = 3;
     string PublishedAt = 4;
     string Description = 5;
-    oneof OverrideSign {
-        sint64 override_at = 6;
-        Empty empty = 7;
-    }
+    sint64 override_at = 6;
 }
 
 message VTuber {
     sint64 VTuberId = 1;
     string Name = 2;
-    uint64 AffiliationId = 3;
-    oneof OverrideSign {
-        sint64 override_at = 6;
-        Empty empty = 7;
-    }
+    sint64 AffiliationId = 3;
+    sint64 override_at = 4;
 }
 
 message Affiliation {
     sint64 AffiliationId = 1;
     string Name = 2;
-    oneof OverrideSign {
-        sint64 override_at = 3;
-        Empty empty = 4;
-    }
+    sint64 override_at = 3;
 }
 
-message Empty {}
 
 message TaskResult {
     string Message = 1;

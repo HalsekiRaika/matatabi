@@ -10,10 +10,10 @@ use yarn::{Affiliation, Channel, VTuber, Live, TaskResult};
 
 use crate::database::models::{Printable, Updatable, Transactable};
 use crate::database::models::affiliation_object::Affiliations;
+use crate::database::models::livers_object::Livers;
 use crate::database::models::upcoming_object::Lives;
 use crate::database::models::update_signature::UpdateSignature;
 use crate::logger::Logger;
-use crate::server::yarn::yarn::affiliation::OverrideSign;
 
 pub mod yarn { tonic::include_proto!("yarn"); }
 
@@ -45,8 +45,8 @@ impl YarnApi for YarnUpdater {
         self.transition_insert::<Affiliation, Affiliations>(req).await
     }
 
-    async fn insert_req_v_tuber(&self, _req: Request<Streaming<VTuber>>) -> YarnResult<TaskResult> {
-        Err(Status::unimplemented("client task is not implemented."))
+    async fn insert_req_v_tuber(&self, req: Request<Streaming<VTuber>>) -> YarnResult<TaskResult> {
+        self.transition_insert::<VTuber, Livers>(req).await
     }
 }
 
@@ -127,12 +127,13 @@ impl From<Live> for Lives {
 
 impl From<Affiliation> for Affiliations {
     fn from(data: Affiliation) -> Affiliations {
-        let sign = if let Some(sign) = data.override_sign { match sign {
-                OverrideSign::OverrideAt(signature) => { signature }
-                OverrideSign::Empty(_) => { 0 }
-            }
-        } else { 0 };
-        Affiliations::new(data.affiliation_id, data.name, sign)
+        Affiliations::new(data.affiliation_id, data.name, data.override_at)
+    }
+}
+
+impl From<VTuber> for Livers {
+    fn from(data: VTuber) -> Self {
+        Livers::new(data.v_tuber_id, Some(data.affiliation_id), data.name, data.override_at)
     }
 }
 
