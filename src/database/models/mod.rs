@@ -20,6 +20,8 @@ pub trait Updatable {
     async fn can_update(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<bool, sqlx::Error>;
 }
 
+// FEATURE: There are some differences in the query statements,
+//          but most of the processing is common, so I may want to add a default implementation later.
 #[async_trait::async_trait]
 pub trait Transactable<T> {
     async fn insert(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<T, sqlx::Error>;
