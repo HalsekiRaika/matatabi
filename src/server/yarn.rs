@@ -116,15 +116,6 @@ impl YarnUpdater {
     }
 }
 
-impl From<Live> for Lives {
-    fn from(data: Live) -> Self {
-        Lives::new(data.video_id, data.channel_id, data.title, data.description,
-            data.published_at, data.updated_at, Some(data.will_start_at), Some(data.started_at),
-            data.thumbnail_url,
-        )
-    }
-}
-
 impl From<Affiliation> for Affiliations {
     fn from(data: Affiliation) -> Affiliations {
         Affiliations::new(data.affiliation_id, data.name, data.override_at)
