@@ -105,24 +105,26 @@ impl Updatable for Affiliations {
     
     async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
         // language=SQL
-        let may_older: i64 = sqlx::query(
-            r#"SELECT update_signatures FROM affiliations WHERE affiliation_id = $1"#
-        )
-        .bind(self.affiliation_id)
-        .fetch_one(&mut *transaction)
-        .await?
-        .get::<i64, _>(0);
-        Ok(self.update_signatures.0 >= may_older)
+        let may_older: i64 = sqlx::query(r#"
+            SELECT update_signatures FROM affiliations WHERE affiliation_id = $1
+        "#).bind(self.affiliation_id)
+           .fetch_one(&mut *transaction)
+           .await?
+           .get::<i64, _>(0);
+        Ok(self.update_signatures.0 > may_older)
     }
 }
 
 #[async_trait::async_trait]
 impl Transactable<Affiliations> for Affiliations {
+
+    /// ### Arguments
+    /// * `transaction` - Instances of Postgres database connections.
     async fn insert(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, Error> {
         // language=SQL
         let insert: Affiliations = sqlx::query_as::<_, Self>(r#"
             INSERT INTO affiliations (affiliation_id, name, update_signatures)
-            VALUES ($1, $2, $3)
+             VALUES ($1, $2, $3)
             RETURNING *
         "#).bind(self.affiliation_id.0)
            .bind(&self.name)
@@ -132,51 +134,53 @@ impl Transactable<Affiliations> for Affiliations {
         Ok(insert)
     }
 
-    /// 0 Old
-    /// 1 Updated
+    /// Update the [Affiliations] data stored in the database.
+    ///
+    /// ### Return Values
+    /// `Result<(Self, Self), Error>` - Result will be returned as the return value.
+    /// * `(Affiliations, Affiliations)` - The elements of the tuple are (old-data, new-data).
+    /// * `Error` - Error returns the error of sqlx.
+    /// ### Arguments
+    /// * `transaction` - Instances of Postgres database connections.
     async fn update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), Error> {
+        // fixme: It is not a fully parallel process, so I should use tokio::join! (まぁ面倒くさいだけなんだけど。)
         // language=SQL
-        let old: Affiliations = sqlx::query_as::<_, Self>(
-            r#"SELECT * FROM affiliations WHERE affiliation_id = $1"#
-        )
-        .bind(self.affiliation_id)
-        .fetch_one(&mut *transaction)
-        .await?;
+        let old: Affiliations = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM affiliations WHERE affiliation_id = $1
+        "#).bind(self.affiliation_id)
+           .fetch_one(&mut *transaction)
+           .await?;
         // language=SQL
-        let update: Affiliations = sqlx::query_as::<_, Self>(
-            r#"
+        let update: Affiliations = sqlx::query_as::<_, Self>(r#"
             UPDATE affiliations
             SET name = $1, update_signatures = $2
             WHERE affiliation_id = $3
             RETURNING *
-            "#
-        )
-        .bind(&self.name)
-        .bind(self.update_signatures.0)
-        .bind(self.affiliation_id.0)
-        .fetch_one(&mut *transaction)
-        .await?;
+        "#).bind(&self.name)
+           .bind(self.update_signatures.0)
+           .bind(self.affiliation_id.0)
+           .fetch_one(&mut *transaction)
+           .await?;
 
         Ok((old, update))
     }
 
     async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, Error> {
+        // fixme: It is not a fully parallel process, so I should use tokio::join! (まぁ面(以下略 )
         // language=SQL
-        let primary = sqlx::query(
-            r#"SELECT EXISTS(SELECT 1 FROM affiliations WHERE name LIKE '$1')"#
-        )
-        .bind(&self.name)
-        .fetch_one(&mut *transaction)
-        .await?
-        .get::<bool, _>(0);
+        let primary = sqlx::query(r#"
+            SELECT EXISTS(SELECT 1 FROM affiliations WHERE name LIKE '$1')
+        "#).bind(&self.name)
+           .fetch_one(&mut *transaction)
+           .await?
+           .get::<bool, _>(0);
         // language=SQL
-        let secondary = sqlx::query(
-            r#"SELECT EXISTS(SELECT 1 FROM affiliations WHERE affiliation_id = $1)"#
-        )
-        .bind(self.affiliation_id)
-        .fetch_one(&mut *transaction)
-        .await?
-        .get::<bool, _>(0);
+        let secondary = sqlx::query(r#"
+            SELECT EXISTS(SELECT 1 FROM affiliations WHERE affiliation_id = $1)
+        "#).bind(self.affiliation_id)
+           .fetch_one(&mut *transaction)
+           .await?
+           .get::<bool, _>(0);
 
         Ok(primary || secondary)
     }
