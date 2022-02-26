@@ -1,8 +1,8 @@
-use sqlx::Type;
+use sqlx::{Type, FromRow};
 use serde::{Serialize, Deserialize};
 use chrono::Utc;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize, Type)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize, Type, FromRow)]
 #[sqlx(transparent)]
 pub struct UpdateSignature(pub i64);
 
