@@ -14,7 +14,7 @@ service YarnApi {
     // clients
     rpc insertReqLive(stream Live) returns (TaskResult);
     rpc insertReqChannel(stream Channel) returns (TaskResult);
-    rpc insertReqVTuber(stream VTuber) returns (TaskResult);
+    rpc insertReqVTuber(stream Liver) returns (TaskResult);
     rpc insertReqAffiliation(stream Affiliation) returns (TaskResult);
 }
 
@@ -32,15 +32,15 @@ message Live {
 
 message Channel {
     string ChannelId = 1;
-    optional sint64 VTuberId = 2;
+    optional sint64 LiverId = 2;
     string LogoUrl = 3;
     google.protobuf.Timestamp PublishedAt = 4;
     string Description = 5;
     sint64 override_at = 6;
 }
 
-message VTuber {
-    sint64 VTuberId = 1;
+message Liver {
+    sint64 LiverId = 1;
     string Name = 2;
     optional sint64 AffiliationId = 3;
     sint64 override_at = 4;

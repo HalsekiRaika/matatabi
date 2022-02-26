@@ -11,7 +11,7 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status, Streaming};
 use yansi::Paint;
 use yarn::yarn_api_server::{YarnApiServer, YarnApi};
-use yarn::{Affiliation, Channel, VTuber, Live, TaskResult};
+use yarn::{Affiliation, Channel, Liver, Live, TaskResult};
 
 use crate::database::models::{Printable, Updatable, Transactable};
 use crate::database::models::affiliation_object::Affiliations;
@@ -52,8 +52,8 @@ impl YarnApi for YarnUpdater {
         self.transition_insert::<Affiliation, Affiliations>(req).await
     }
 
-    async fn insert_req_v_tuber(&self, req: Request<Streaming<VTuber>>) -> YarnResult<TaskResult> {
-        self.transition_insert::<VTuber, Livers>(req).await
+    async fn insert_req_v_tuber(&self, req: Request<Streaming<Liver>>) -> YarnResult<TaskResult> {
+        self.transition_insert::<Liver, Livers>(req).await
     }
 }
 
@@ -157,10 +157,10 @@ impl From<Affiliation> for Affiliations {
     }
 }
 
-impl From<VTuber> for Livers {
-    fn from(data: VTuber) -> Self {
+impl From<Liver> for Livers {
+    fn from(data: Liver) -> Self {
         let id = if let Some(id) = data.affiliation_id { Some(id) } else { None };
-        Livers::new(data.v_tuber_id, id, data.name, data.override_at)
+        Livers::new(data.liver_id, id, data.name, data.override_at)
     }
 }
 
@@ -170,7 +170,7 @@ impl From<Channel> for Channels {
         let date: DateTime<Local> = Local.timestamp(timestamp.0, timestamp.1);
         ChannelsBuilder {
             channel_id: ChannelId(data.channel_id),
-            liver_id: if let Some(id) = data.v_tuber_id { Some(LiverId(id)) } else { None },
+            liver_id: if let Some(id) = data.liver_id { Some(LiverId(id)) } else { None },
             logo_url: data.logo_url,
             published_at: date,
             description: data.description,
