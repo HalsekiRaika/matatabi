@@ -5,11 +5,11 @@ CREATE TABLE affiliations (
     update_signatures BIGSERIAL NOT NULL
 );
 
--- DROP TABLE vtubers;
-CREATE TABLE vtubers (
-    vtuber_id BIGSERIAL NOT NULL PRIMARY KEY,
-    affiliation BIGSERIAL,
-      FOREIGN KEY (affiliation)
+-- DROP TABLE livers;
+CREATE TABLE livers (
+    liver_id BIGSERIAL NOT NULL PRIMARY KEY,
+    affiliation_id BIGSERIAL,
+      FOREIGN KEY (affiliation_id)
         REFERENCES affiliations(affiliation_id),
     name VARCHAR(32) NOT NULL,
     update_signatures BIGSERIAL NOT NULL
@@ -20,11 +20,11 @@ CREATE TABLE channels (
     -- Channel ID uses the Youtube identifier string.
     -- (Example: UCxxxxxxxxxxxxxxxxxxxxxx)
     channel_id VARCHAR(24) NOT NULL PRIMARY KEY,
-    vtuber_id BIGSERIAL,
-      FOREIGN KEY (vtuber_id)
-        REFERENCES vtubers(vtuber_id),
+    liver_id BIGSERIAL,
+      FOREIGN KEY (liver_id)
+        REFERENCES livers(liver_id),
     logo_url VARCHAR(128) NOT NULL,
-    published_at TIMESTAMP NOT NULL,
+    published_at TIMESTAMPTZ NOT NULL,
     description TEXT,
     update_signatures BIGSERIAL NOT NULL
 );
@@ -39,10 +39,10 @@ CREATE TABLE lives (
         REFERENCES channels(channel_id),
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    will_start_at TIMESTAMP NULL,
-    started_at TIMESTAMP NULL,
+    published_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    will_start_at TIMESTAMPTZ NULL,
+    started_at TIMESTAMPTZ NULL,
     thumbnail_url VARCHAR(128),
     update_signatures BIGSERIAL NOT NULL
 );
