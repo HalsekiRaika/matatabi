@@ -69,7 +69,7 @@ impl Transactable<Channels> for Channels {
         "#).bind(&self.channel_id)
            .bind(self.liver_id)
            .bind(&self.logo_url)
-           .bind(self.published_at.naive_local())
+           .bind(self.published_at)
            .bind(&self.description)
            .bind(self.update_signatures)
            .fetch_one(&mut *transaction)
