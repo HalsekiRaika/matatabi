@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package yarn;
 
+import "google/protobuf/timestamp.proto";
+
 service YarnApi {
     // servers
 //    rpc insertResLive(Live) returns (stream TaskResult);
@@ -18,15 +20,14 @@ service YarnApi {
 
 message Live {
     string VideoId = 1;
-    string ChannelId = 2;
+    optional string ChannelId = 2;
     string Title = 3;
     string Description = 4;
     string ThumbnailUrl = 5;
-    string PublishedAt = 6;
-    string UpdatedAt = 7;
-
-    string WillStartAt = 8; // status in upcoming
-    string StartedAt = 9; // status in live
+    google.protobuf.Timestamp PublishedAt = 6;
+    google.protobuf.Timestamp UpdatedAt = 7;
+    google.protobuf.Timestamp WillStartAt = 8; // status in upcoming
+    google.protobuf.Timestamp StartedAt = 9; // status in live
     enum Status {
         UPCOMING = 0;
         LIVE = 1;
@@ -36,9 +37,9 @@ message Live {
 
 message Channel {
     string ChannelId = 1;
-    sint64 VTuberId = 2;
+    optional sint64 VTuberId = 2;
     string LogoUrl = 3;
-    string PublishedAt = 4;
+    google.protobuf.Timestamp PublishedAt = 4;
     string Description = 5;
     sint64 override_at = 6;
 }
@@ -46,7 +47,7 @@ message Channel {
 message VTuber {
     sint64 VTuberId = 1;
     string Name = 2;
-    sint64 AffiliationId = 3;
+    optional sint64 AffiliationId = 3;
     sint64 override_at = 4;
 }
 
