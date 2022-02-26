@@ -61,7 +61,7 @@ impl Livers {
         where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL
         let all = sqlx::query_as::<_, Self>(r#"
-            SELECT * FROM vtubers
+            SELECT * FROM livers
         "#).fetch_all(transaction)
             .await?;
         Ok(all)
@@ -97,12 +97,12 @@ impl Updatable for Livers {
     async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, Error> {
         // language=SQL
         let may_older: i64 = sqlx::query(r#"
-            SELECT update_signatures FROM vtubers WHERE vtuber_id = $1
+            SELECT update_signatures FROM livers WHERE liver_id = $1
         "#).bind(self.liver_id)
            .fetch_one(&mut *transaction)
            .await?
            .get::<i64, _>(0);
-        Ok(self.update_signatures.0 >= may_older)
+        Ok(self.update_signatures.0 > may_older)
     }
 }
 
@@ -111,11 +111,11 @@ impl Transactable<Livers> for Livers {
     async fn insert(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, sqlx::Error> {
         // language=SQL
         let insert: Livers = sqlx::query_as::<_, Self>(r#"
-            INSERT INTO vtubers (vtuber_id, affiliation, name, update_signatures)
+            INSERT INTO livers (liver_id, affiliation_id, name, update_signatures)
             VALUES ($1, $2, $3, $4)
             RETURNING *
-        "#).bind(self.liver_id.0)
-           .bind(self.affiliation_id.unwrap().0)
+        "#).bind(self.liver_id)
+           .bind(self.affiliation_id)
            .bind(&self.name)
            .bind(self.update_signatures.0)
            .fetch_one(&mut *transaction)
@@ -126,15 +126,15 @@ impl Transactable<Livers> for Livers {
     async fn update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), sqlx::Error> {
         // language=SQL
         let old: Livers = sqlx::query_as::<_, Self>(r#"
-            SELECT * FROM vtubers WHERE vtuber_id = $1
+            SELECT * FROM livers WHERE liver_id = $1
         "#).bind(self.liver_id)
            .fetch_one(&mut *transaction)
            .await?;
         // language=SQL
         let update: Livers = sqlx::query_as::<_, Self>(r#"
-            UPDATE vtubers
-            SET name = $1, affiliation = $2, update_signatures = $3
-            WHERE vtuber_id = $4
+            UPDATE livers
+            SET name = $1, affiliation_id = $2, update_signatures = $3
+            WHERE liver_id = $4
             RETURNING *
         "#).bind(&self.name)
            .bind(self.affiliation_id.unwrap().0)
@@ -148,14 +148,14 @@ impl Transactable<Livers> for Livers {
     async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
         // language=SQL
         let is_name_exist = sqlx::query(r#"
-            SELECT EXISTS(SELECT 1 FROM vtubers WHERE name LIKE $1)
+            SELECT EXISTS(SELECT 1 FROM livers WHERE name LIKE $1)
         "#).bind(&self.name)
            .fetch_one(&mut *transaction)
            .await?
            .get::<bool, _>(0);
         // language=SQL
         let is_id_exist = sqlx::query(r#"
-            SELECT EXISTS(SELECT 1 FROM vtubers WHERE vtuber_id = $1)
+            SELECT EXISTS(SELECT 1 FROM livers WHERE liver_id = $1)
         "#).bind(self.liver_id)
            .fetch_one(&mut *transaction)
            .await?
@@ -166,7 +166,7 @@ impl Transactable<Livers> for Livers {
     async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, Error> {
         // language=SQL
         let del = sqlx::query_as::<_, LiverId>(r#"
-            DELETE FROM vtubers WHERE vtuber_id = $1 RETURNING vtuber_id
+            DELETE FROM livers WHERE liver_id = $1 RETURNING liver_id
         "#).bind(self.liver_id)
            .fetch_one(&mut *transaction)
            .await?;
