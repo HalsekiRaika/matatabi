@@ -1,15 +1,22 @@
 use std::net::ToSocketAddrs;
+use std::str::FromStr;
+use serde::{Serialize, Deserialize};
+use chrono::{DateTime, Local, TimeZone};
 use futures::StreamExt;
+use prost_types::Timestamp;
 
 use sqlx::Postgres;
 use tokio::time::Instant;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status, Streaming};
+use yansi::Paint;
 use yarn::yarn_api_server::{YarnApiServer, YarnApi};
 use yarn::{Affiliation, Channel, VTuber, Live, TaskResult};
 
 use crate::database::models::{Printable, Updatable, Transactable};
 use crate::database::models::affiliation_object::Affiliations;
+use crate::database::models::channel_object::{Channels, ChannelsBuilder};
+use crate::database::models::id_object::{ChannelId, LiverId};
 use crate::database::models::livers_object::Livers;
 use crate::database::models::upcoming_object::Lives;
 use crate::database::models::update_signature::UpdateSignature;
@@ -37,8 +44,8 @@ impl YarnApi for YarnUpdater {
         Err(Status::unimplemented("client task is not implemented."))
     }
 
-    async fn insert_req_channel(&self, _req: Request<Streaming<Channel>>) -> YarnResult<TaskResult> {
-        Err(Status::unimplemented("client task is not implemented."))
+    async fn insert_req_channel(&self, req: Request<Streaming<Channel>>) -> YarnResult<TaskResult> {
+        self.transition_insert::<Channel, Channels>(req).await
     }
 
     async fn insert_req_affiliation(&self, req: Request<Streaming<Affiliation>>) -> YarnResult<TaskResult> {
@@ -58,22 +65,18 @@ impl YarnUpdater {
 
         let mut update_data_stream = req.into_inner();
         let mut insertion: Vec<T> = Vec::new();
-        let mut receive_count = 0;
+        let mut result = ResultMsg::default();
         let dur_now = Instant::now();
 
         while let Some(receive) = update_data_stream.next().await {
             let receive = receive?;
             let receive = T::from(receive);
-            logger.info(&format!("| RECEIVE  | {}", receive.get_primary_name()));
+            logger.info(&format!("[ {:<10} ] {}", Paint::green("RECEIVE"), receive.get_primary_name()));
             insertion.push(receive);
-            receive_count += 1;
+            result.received()
         }
-        let elapsed = dur_now.elapsed().as_millis();
+        let receive_elapsed = dur_now.elapsed().as_millis();
         let dur_now = Instant::now();
-
-        let response = TaskResult {
-            message: format!("Received. item: {} / elapsed: {}ms", &receive_count, &elapsed)
-        };
 
         let mut transaction = match self.pool.begin().await {
             Ok(transaction) => transaction,
@@ -84,22 +87,27 @@ impl YarnUpdater {
             if !item.exists(&mut transaction).await.unwrap() {
                 let insert = match item.apply_signature(UpdateSignature::default().as_i64()).insert(&mut transaction).await {
                     Ok(insert) => insert,
-                    Err(_) => return Err(Status::internal("Failed to data insert."))
+                    Err(reason) => return { println!("{}", reason.to_string()); Err(Status::internal("Failed to data insert.")) }
                 };
-                logger.info(&format!("| INSERT   | {} + {}", insert.get_secondary_name(), insert.get_signature()));
-            } else if !item.is_empty_sign() && item.can_update(&mut transaction).await.unwrap() {
+                logger.info(&format!("[ {:<10} ] {} + {}", Paint::cyan("INSERT"), insert.get_secondary_name(), insert.get_signature()));
+                result.inserted();
+            } else if !item.is_empty_sign() && item.can_update(&mut transaction).await.unwrap_or(false) {
                 let (old, update) = match item.update(&mut transaction).await {
                     Ok((old, update)) => (old, update),
                     Err(_) => return Err(Status::internal("Failed to data update."))
                 };
-                logger.info(&format!("| UPDATE   | {} : {} > {}",
+                logger.info(&format!("[ {:<10} ] {} : {} > {}", Paint::yellow("UPDATE"),
                     &update.get_secondary_name(), &old.get_primary_name(), &update.get_primary_name()));
+                result.updated();
             } else if item.exists(&mut transaction).await.unwrap() && item.get_signature() < 0 {
                 let delete = match item.delete(&mut transaction).await {
                     Ok(delete) => delete,
                     Err(_) => return Err(Status::internal("Failed to data delete."))
                 };
-                logger.caut(&format!("| DELETE   | {}", delete));
+                logger.caut(&format!("[ {:<10} ] {}", Paint::magenta("DELETE"), delete));
+                result.deleted();
+            } else {
+                result.skipped();
             }
         }
 
@@ -109,10 +117,37 @@ impl YarnUpdater {
         }
 
         let logger = Logger::new(Some("Yarn"));
-        let elapsed = dur_now.elapsed().as_millis();
+        let transaction_elapsed = dur_now.elapsed().as_millis();
+        result.elapsed(receive_elapsed, transaction_elapsed);
+        logger.info(&format!("Transaction elapsed {}ms", &transaction_elapsed));
+        Ok(Response::new(TaskResult { message: result.message() }))
+    }
+}
 
-        logger.info(&format!("Transaction elapsed {}ms", &elapsed));
-        Ok(Response::new(response))
+#[derive(Default, Serialize)]
+struct ResultMsg {
+    receive: u32,
+    insert_count: u32,
+    update_count: u32,
+    delete_count: u32,
+    skip_count: u32,
+    receive_elapsed: u128,
+    transaction_elapsed: u128
+}
+
+impl ResultMsg {
+    fn received(&mut self) { self.receive += 1; }
+    fn inserted(&mut self) { self.insert_count += 1; }
+    fn updated(&mut self) { self.update_count += 1; }
+    fn deleted(&mut self) { self.delete_count += 1; }
+    fn skipped(&mut self) { self.skip_count += 1; }
+    fn elapsed(&mut self, receive: u128, transaction: u128) {
+        self.receive_elapsed = receive;
+        self.transaction_elapsed = transaction;
+    }
+
+    fn message(&self) -> String {
+        serde_json::to_string(self).unwrap_or("result is not available.".to_string())
     }
 }
 
@@ -124,7 +159,24 @@ impl From<Affiliation> for Affiliations {
 
 impl From<VTuber> for Livers {
     fn from(data: VTuber) -> Self {
-        Livers::new(data.v_tuber_id, Some(data.affiliation_id), data.name, data.override_at)
+        let id = if let Some(id) = data.affiliation_id { Some(id) } else { None };
+        Livers::new(data.v_tuber_id, id, data.name, data.override_at)
+    }
+}
+
+impl From<Channel> for Channels {
+    fn from(data: Channel) -> Self {
+        let timestamp = if let Some(stamp) = data.published_at { (stamp.seconds, stamp.nanos as u32) } else { (0, 0) };
+        let date: DateTime<Local> = Local.timestamp(timestamp.0, timestamp.1);
+        ChannelsBuilder {
+            channel_id: ChannelId(data.channel_id),
+            liver_id: if let Some(id) = data.v_tuber_id { Some(LiverId(id)) } else { None },
+            logo_url: data.logo_url,
+            published_at: date,
+            description: data.description,
+            update_signatures: UpdateSignature(data.override_at),
+            ..Default::default()
+        }.build()
     }
 }
 
