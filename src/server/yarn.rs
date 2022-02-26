@@ -16,9 +16,9 @@ use yarn::{Affiliation, Channel, VTuber, Live, TaskResult};
 use crate::database::models::{Printable, Updatable, Transactable};
 use crate::database::models::affiliation_object::Affiliations;
 use crate::database::models::channel_object::{Channels, ChannelsBuilder};
-use crate::database::models::id_object::{ChannelId, LiverId};
+use crate::database::models::id_object::{ChannelId, LiverId, VideoId};
 use crate::database::models::livers_object::Livers;
-use crate::database::models::upcoming_object::Lives;
+use crate::database::models::upcoming_object::{Lives, LivesBuilder};
 use crate::database::models::update_signature::UpdateSignature;
 use crate::logger::Logger;
 
@@ -40,8 +40,8 @@ type YarnResult<T> = Result<Response<T>, Status>;
 // Todo: Sending one request per update task is not very efficient, so change to Stream.
 #[tonic::async_trait]
 impl YarnApi for YarnUpdater {
-    async fn insert_req_live(&self, _req: Request<Streaming<Live>>) -> YarnResult<TaskResult> {
-        Err(Status::unimplemented("client task is not implemented."))
+    async fn insert_req_live(&self, req: Request<Streaming<Live>>) -> YarnResult<TaskResult> {
+        self.transition_insert::<Live, Lives>(req).await
     }
 
     async fn insert_req_channel(&self, req: Request<Streaming<Channel>>) -> YarnResult<TaskResult> {
@@ -175,6 +175,29 @@ impl From<Channel> for Channels {
             published_at: date,
             description: data.description,
             update_signatures: UpdateSignature(data.override_at),
+            ..Default::default()
+        }.build()
+    }
+}
+
+impl From<Live> for Lives {
+    fn from(data: Live) -> Self {
+        let published: Option<DateTime<Local>> = if let Some(stamp) = data.published_at { Some(Local.timestamp(stamp.seconds, stamp.nanos as u32)) } else { None };
+        let updated: Option<DateTime<Local>> = if let Some(stamp) = data.updated_at { Some(Local.timestamp(stamp.seconds, stamp.nanos as u32)) } else { None };
+        let will_start: Option<DateTime<Local>> = if let Some(stamp) = data.will_start_at { Some(Local.timestamp(stamp.seconds, stamp.nanos as u32)) } else { None };
+        let started: Option<DateTime<Local>> = if let Some(stamp) = data.started_at { Some(Local.timestamp(stamp.seconds, stamp.nanos as u32)) } else { None };
+        let cloned = data.video_id.clone();
+        LivesBuilder {
+            video_id: VideoId(data.video_id),
+            channel_id: if let Some(id) = data.channel_id { Some(ChannelId(id)) } else { None },
+            title: data.title,
+            description: data.description,
+            published_at: published,
+            updated_at: updated,
+            will_start_at: will_start,
+            started_at: started,
+            thumbnail_url: format!("https://img.youtube.com/vi/{}/maxresdefault.jpg", cloned),
+            update_signature: UpdateSignature(data.override_at),
             ..Default::default()
         }.build()
     }
