@@ -3,6 +3,7 @@ pub mod affiliation_object;
 pub mod livers_object;
 pub mod upcoming_object;
 pub mod update_signature;
+pub mod channel_object;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct RawString(String);
