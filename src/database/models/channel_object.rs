@@ -1,7 +1,5 @@
-use std::future::Future;
-use std::pin::Pin;
 use chrono::{DateTime, Local};
-use sqlx::{Error, Row, Postgres, Transaction};
+use sqlx::{Row, Postgres, Transaction};
 use crate::database::models::id_object::{ChannelId, LiverId};
 use crate::database::models::{Printable, Transactable, Updatable};
 use crate::database::models::update_signature::UpdateSignature;

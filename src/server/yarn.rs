@@ -1,9 +1,7 @@
 use std::net::ToSocketAddrs;
-use std::str::FromStr;
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use chrono::{DateTime, Local, TimeZone};
 use futures::StreamExt;
-use prost_types::Timestamp;
 
 use sqlx::Postgres;
 use tokio::time::Instant;

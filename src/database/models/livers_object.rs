@@ -1,5 +1,3 @@
-use std::future::Future;
-use std::pin::Pin;
 use sqlx::{Error, Postgres, Row, Transaction};
 use crate::database::models::id_object::{AffiliationId, LiverId};
 use crate::database::models::{Printable, Transactable, Updatable};

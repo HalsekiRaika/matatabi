@@ -1,7 +1,4 @@
 use core::option::Option;
-use std::future::Future;
-use std::pin::Pin;
-use std::str::FromStr;
 use chrono::{DateTime, Local};
 use sqlx::{Row, Postgres, Transaction};
 use crate::database::models::{Printable, Updatable, Transactable};
@@ -22,12 +19,6 @@ pub struct Lives {
     thumbnail_url: String,
     update_signature: UpdateSignature
 }
-
-// impl Lives {
-//     fn thumbnail(&mut self) {
-//         self.thumbnail_url = format!("https://img.youtube.com/vi/{}/maxresdefault.jpg", self.video_id.clone().0)
-//     }
-// }
 
 impl Printable for Lives {
     fn get_primary_name(&self) -> String {
