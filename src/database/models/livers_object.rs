@@ -1,4 +1,4 @@
-use sqlx::{Error, Postgres, Row, Transaction};
+use sqlx::{Postgres, Row, Transaction};
 use crate::database::models::id_object::{AffiliationId, LiverId};
 use crate::database::models::{Printable, Transactable, Updatable};
 use crate::database::models::update_signature::UpdateSignature;
@@ -92,7 +92,7 @@ impl Updatable for Livers {
         self.update_signatures.0.clone()
     }
 
-    async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, Error> {
+    async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
         // language=SQL
         let may_older: i64 = sqlx::query(r#"
             SELECT update_signatures FROM livers WHERE liver_id = $1
@@ -161,7 +161,7 @@ impl Transactable<Livers> for Livers {
         Ok(is_name_exist || is_id_exist)
     }
 
-    async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, Error> {
+    async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, sqlx::Error> {
         // language=SQL
         let del = sqlx::query_as::<_, LiverId>(r#"
             DELETE FROM livers WHERE liver_id = $1 RETURNING liver_id

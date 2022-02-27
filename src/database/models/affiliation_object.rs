@@ -1,6 +1,6 @@
 use super::id_object::AffiliationId;
 use super::update_signature::UpdateSignature;
-use sqlx::{Error, FromRow, Row, Transaction};
+use sqlx::{FromRow, Row, Transaction};
 use sqlx::postgres::Postgres;
 use crate::database::models::{Printable, Updatable, Transactable, RawString};
 
@@ -120,7 +120,7 @@ impl Transactable<Affiliations> for Affiliations {
 
     /// ### Arguments
     /// * `transaction` - Instances of Postgres database connections.
-    async fn insert(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, Error> {
+    async fn insert(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, sqlx::Error> {
         // language=SQL
         let insert: Affiliations = sqlx::query_as::<_, Self>(r#"
             INSERT INTO affiliations (affiliation_id, name, update_signatures)
@@ -142,7 +142,7 @@ impl Transactable<Affiliations> for Affiliations {
     /// * `Error` - Error returns the error of sqlx.
     /// ### Arguments
     /// * `transaction` - Instances of Postgres database connections.
-    async fn update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), Error> {
+    async fn update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), sqlx::Error> {
         // fixme: It is not a fully parallel process, so I should use tokio::join! (まぁ面倒くさいだけなんだけど。)
         // language=SQL
         let old: Affiliations = sqlx::query_as::<_, Self>(r#"
@@ -165,7 +165,7 @@ impl Transactable<Affiliations> for Affiliations {
         Ok((old, update))
     }
 
-    async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, Error> {
+    async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
         // fixme: It is not a fully parallel process, so I should use tokio::join! (まぁ面(以下略 )
         // language=SQL
         let primary = sqlx::query(r#"
@@ -185,7 +185,7 @@ impl Transactable<Affiliations> for Affiliations {
         Ok(primary || secondary)
     }
 
-    async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, Error> {
+    async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, sqlx::Error> {
         // language=SQL
         let del = sqlx::query_as::<_, AffiliationId>(r#"
             DELETE FROM affiliations WHERE affiliation_id = $1 RETURNING affiliation_id
