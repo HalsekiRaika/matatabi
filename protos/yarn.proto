@@ -5,13 +5,6 @@ package yarn;
 import "google/protobuf/timestamp.proto";
 
 service YarnApi {
-    // servers
-//    rpc insertResLive(Live) returns (stream TaskResult);
-//    rpc insertResChannel(Channel) returns (stream TaskResult);
-//    rpc insertResVTuber(VTuber) returns (stream TaskResult);
-//    rpc insertResAffiliation(Affiliation) returns (stream TaskResult);
-
-    // clients
     rpc insertReqLive(stream Live) returns (TaskResult);
     rpc insertReqChannel(stream Channel) returns (TaskResult);
     rpc insertReqVTuber(stream Liver) returns (TaskResult);
