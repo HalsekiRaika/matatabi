@@ -35,7 +35,6 @@ impl YarnUpdater {
 
 type YarnResult<T> = Result<Response<T>, Status>;
 
-// Todo: Sending one request per update task is not very efficient, so change to Stream.
 #[tonic::async_trait]
 impl YarnApi for YarnUpdater {
     async fn insert_req_live(&self, req: Request<Streaming<Live>>) -> YarnResult<TaskResult> {
@@ -85,7 +84,7 @@ impl YarnUpdater {
             if !item.exists(&mut transaction).await.unwrap() {
                 let insert = match item.apply_signature(UpdateSignature::default().as_i64()).insert(&mut transaction).await {
                     Ok(insert) => insert,
-                    Err(reason) => return { println!("{}", reason.to_string()); Err(Status::internal("Failed to data insert.")) }
+                    Err(reason) => return { println!("{}", reason); Err(Status::internal("Failed to data insert.")) }
                 };
                 logger.info(&format!("[ {:<10} ] {} + {}", Paint::cyan("INSERT"), insert.get_secondary_name(), insert.get_signature()));
                 result.inserted();
@@ -145,7 +144,7 @@ impl ResultMsg {
     }
 
     fn message(&self) -> String {
-        serde_json::to_string(self).unwrap_or("result is not available.".to_string())
+        serde_json::to_string(self).unwrap_or_else(|_| "result is not available.".to_string())
     }
 }
 
@@ -157,8 +156,7 @@ impl From<Affiliation> for Affiliations {
 
 impl From<Liver> for Livers {
     fn from(data: Liver) -> Self {
-        let id = if let Some(id) = data.affiliation_id { Some(id) } else { None };
-        Livers::new(data.liver_id, id, data.name, data.override_at)
+        Livers::new(data.liver_id, data.affiliation_id, data.name, data.override_at)
     }
 }
 
@@ -168,7 +166,7 @@ impl From<Channel> for Channels {
         let date: DateTime<Local> = Local.timestamp(timestamp.0, timestamp.1);
         ChannelsBuilder {
             channel_id: ChannelId(data.channel_id),
-            liver_id: if let Some(id) = data.liver_id { Some(LiverId(id)) } else { None },
+            liver_id: data.liver_id.map(LiverId),
             logo_url: data.logo_url,
             published_at: date,
             description: data.description,
@@ -180,20 +178,16 @@ impl From<Channel> for Channels {
 
 impl From<Live> for Lives {
     fn from(data: Live) -> Self {
-        let published: Option<DateTime<Local>> = if let Some(stamp) = data.published_at { Some(Local.timestamp(stamp.seconds, stamp.nanos as u32)) } else { None };
-        let updated: Option<DateTime<Local>> = if let Some(stamp) = data.updated_at { Some(Local.timestamp(stamp.seconds, stamp.nanos as u32)) } else { None };
-        let will_start: Option<DateTime<Local>> = if let Some(stamp) = data.will_start_at { Some(Local.timestamp(stamp.seconds, stamp.nanos as u32)) } else { None };
-        let started: Option<DateTime<Local>> = if let Some(stamp) = data.started_at { Some(Local.timestamp(stamp.seconds, stamp.nanos as u32)) } else { None };
         let cloned = data.video_id.clone();
         LivesBuilder {
             video_id: VideoId(data.video_id),
-            channel_id: if let Some(id) = data.channel_id { Some(ChannelId(id)) } else { None },
+            channel_id: data.channel_id.map(ChannelId),
             title: data.title,
             description: data.description,
-            published_at: published,
-            updated_at: updated,
-            will_start_at: will_start,
-            started_at: started,
+            published_at: data.published_at.map(|stamp| Local.timestamp(stamp.seconds, stamp.nanos as u32)),
+            updated_at: data.updated_at.map(|stamp| Local.timestamp(stamp.seconds, stamp.nanos as u32)),
+            will_start_at: data.will_start_at.map(|stamp| Local.timestamp(stamp.seconds, stamp.nanos as u32)),
+            started_at: data.started_at.map(|stamp| Local.timestamp(stamp.seconds, stamp.nanos as u32)),
             thumbnail_url: format!("https://img.youtube.com/vi/{}/maxresdefault.jpg", cloned),
             update_signature: UpdateSignature(data.override_at),
             ..Default::default()

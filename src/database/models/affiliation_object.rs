@@ -100,7 +100,7 @@ impl Updatable for Affiliations {
     }
 
     fn get_signature(&self) -> i64 {
-        self.update_signatures.0.clone()
+        self.update_signatures.0
     }
     
     async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {

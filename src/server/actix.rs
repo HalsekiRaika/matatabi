@@ -37,7 +37,8 @@ pub async fn run_actix(pool: PgPool) -> Result<(), std::io::Error> {
     .await
 }
 
-async fn validator(mut client: CageApiClient<Channel>, req: ServiceRequest, credentials: Credentials) -> CageMiddlewareTaskResult {
+#[allow(unused_mut)]
+async fn validator(mut _client: CageApiClient<Channel>, req: ServiceRequest, credentials: Credentials) -> CageMiddlewareTaskResult {
     // Todo: Replace tonic(grpc) connection for validator task
     println!("{}", credentials.get_token());
     Ok(req)

@@ -22,7 +22,7 @@ struct RawLivers {
 impl From<RawLivers> for Livers {
     fn from(raw: RawLivers) -> Self {
         let id = if let Some(id) = raw.liver_id { id } else { 0 };
-        let aff = if let Some(id) = raw.affiliation_id { Some(id) } else { None };
+        let aff = raw.affiliation_id;
         let name = if let Some(name) = raw.name { name } else { "none".to_string() };
         let sign = if let Some(sign) = raw.update_signatures { sign } else { 0 };
         Livers::new(id, aff, name, sign)
@@ -34,7 +34,7 @@ impl Livers {
         liver_id: i64, affiliation_id: Option<i64>,
         name: impl Into<String>, update_signature: i64
     ) -> Self {
-        let aff = if let Some(aff) = affiliation_id { Some(AffiliationId(aff)) } else { None };
+        let aff = affiliation_id.map(AffiliationId);
         Self {
             liver_id: LiverId(liver_id), affiliation_id: aff,
             name: name.into(), update_signatures: UpdateSignature(update_signature)
@@ -46,11 +46,11 @@ impl Livers {
     }
 
     pub fn get_liver_id(&self) -> LiverId {
-        self.liver_id.clone()
+        self.liver_id
     }
 
     pub fn get_affiliation_id(&self) -> Option<AffiliationId> {
-        self.affiliation_id.clone()
+        self.affiliation_id
     }
 }
 
@@ -89,7 +89,7 @@ impl Updatable for Livers {
     }
 
     fn get_signature(&self) -> i64 {
-        self.update_signatures.0.clone()
+        self.update_signatures.0
     }
 
     async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {

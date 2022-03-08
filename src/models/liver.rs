@@ -15,9 +15,7 @@ pub struct Liver {
 
 impl From<crate::database::models::livers_object::Livers> for Liver {
     fn from(database_obj: Livers) -> Self {
-        let aff = if let Some(aff) = database_obj.get_affiliation_id() {
-            Some(AffiliationId::from(aff))
-        } else { None };
+        let aff = database_obj.get_affiliation_id().map(AffiliationId::from);
 
         Self {
             liver_id: LiverId::from(database_obj.get_liver_id()),

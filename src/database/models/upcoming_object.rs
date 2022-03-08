@@ -26,7 +26,7 @@ impl Printable for Lives {
     }
 
     fn get_secondary_name(&self) -> String {
-        self.channel_id.clone().unwrap_or(ChannelId("none".to_string())).0.to_string()
+        self.channel_id.clone().unwrap_or_else(|| ChannelId("none".to_string())).0
     }
 }
 
@@ -43,7 +43,7 @@ impl Updatable for Lives {
     }
 
     fn get_signature(&self) -> i64 {
-        self.update_signature.0.clone()
+        self.update_signature.0
     }
 
     async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
