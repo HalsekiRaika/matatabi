@@ -1,9 +1,10 @@
 pub mod actix;
 pub mod middleware;
-pub mod yarn;
+pub mod salmon;
+pub mod meilisearch;
 
 #[allow(unused_must_use)]
 pub async fn server_run(pool: sqlx::PgPool) {
-    yarn::run_yarn(pool.clone()).await;
+    salmon::run_salmon(pool.clone()).await;
     actix::run_actix(pool.clone()).await;
 }

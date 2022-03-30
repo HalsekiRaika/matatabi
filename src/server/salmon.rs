@@ -8,8 +8,8 @@ use tokio::time::Instant;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status, Streaming};
 use yansi::Paint;
-use yarn::yarn_api_server::{YarnApiServer, YarnApi};
-use yarn::{Affiliation, Channel, Liver, Live, TaskResult};
+use salmon::salmon_api_server::{SalmonApiServer, SalmonApi};
+use salmon::{Affiliation, Channel, Liver, Live, TaskResult};
 
 use crate::database::models::{Printable, Updatable, Transactable};
 use crate::database::models::affiliation_object::Affiliations;
@@ -20,14 +20,15 @@ use crate::database::models::upcoming_object::{Lives, LivesBuilder};
 use crate::database::models::update_signature::UpdateSignature;
 use crate::logger::Logger;
 
-pub mod yarn { tonic::include_proto!("yarn"); }
+#[allow(clippy::module_inception)]
+pub mod salmon { tonic::include_proto!("salmon"); }
 
 #[derive(Debug)]
-pub struct YarnUpdater {
+pub struct SalmonUpdater {
     pool: sqlx::Pool<Postgres>
 }
 
-impl YarnUpdater {
+impl SalmonUpdater {
     fn new(connection_pool: sqlx::Pool<Postgres>) -> Self {
         Self { pool: connection_pool }
     }
@@ -36,7 +37,7 @@ impl YarnUpdater {
 type YarnResult<T> = Result<Response<T>, Status>;
 
 #[tonic::async_trait]
-impl YarnApi for YarnUpdater {
+impl SalmonApi for SalmonUpdater {
     async fn insert_req_live(&self, req: Request<Streaming<Live>>) -> YarnResult<TaskResult> {
         self.transition_insert::<Live, Lives>(req).await
     }
@@ -45,16 +46,16 @@ impl YarnApi for YarnUpdater {
         self.transition_insert::<Channel, Channels>(req).await
     }
 
-    async fn insert_req_affiliation(&self, req: Request<Streaming<Affiliation>>) -> YarnResult<TaskResult> {
-        self.transition_insert::<Affiliation, Affiliations>(req).await
-    }
-
     async fn insert_req_v_tuber(&self, req: Request<Streaming<Liver>>) -> YarnResult<TaskResult> {
         self.transition_insert::<Liver, Livers>(req).await
     }
+
+    async fn insert_req_affiliation(&self, req: Request<Streaming<Affiliation>>) -> YarnResult<TaskResult> {
+        self.transition_insert::<Affiliation, Affiliations>(req).await
+    }
 }
 
-impl YarnUpdater {
+impl SalmonUpdater {
     async fn transition_insert<R, T>(&self, req: Request<Streaming<R>>) -> YarnResult<TaskResult>
       where T: Transactable<T> + Printable + Updatable + From<R> {
         let logger = Logger::new(Some("Yarn"));
@@ -84,7 +85,7 @@ impl YarnUpdater {
             if !item.exists(&mut transaction).await.unwrap() {
                 let insert = match item.apply_signature(UpdateSignature::default().as_i64()).insert(&mut transaction).await {
                     Ok(insert) => insert,
-                    Err(reason) => return { println!("{}", reason); Err(Status::internal("Failed to data insert.")) }
+                    Err(reason) => return { println!("{:?}", reason); Err(Status::internal("Failed to data insert.")) }
                 };
                 logger.info(&format!("[ {:<10} ] {} + {}", Paint::cyan("INSERT"), insert.get_secondary_name(), insert.get_signature()));
                 result.inserted();
@@ -195,16 +196,16 @@ impl From<Live> for Lives {
     }
 }
 
-pub async fn run_yarn(pool: sqlx::Pool<Postgres>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_salmon(pool: sqlx::Pool<Postgres>) -> Result<(), Box<dyn std::error::Error>> {
     let logger = Logger::new(Some("Yarn"));
     let bind_ip = "[::1]:50051".to_socket_addrs()
         .unwrap().next()
         .unwrap();
-    let server = YarnUpdater::new(pool);
+    let server = SalmonUpdater::new(pool);
     tokio::spawn(async move {
-        logger.info("Starting yarn grpc update server!");
+        logger.info("Starting salmon grpc update server!");
         Server::builder()
-            .add_service(YarnApiServer::new(server))
+            .add_service(SalmonApiServer::new(server))
             .serve(bind_ip)
             .await
             .expect("Server failed to start...")
