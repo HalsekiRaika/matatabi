@@ -64,6 +64,7 @@ impl<S, B, F, O> Transform<S, ServiceRequest> for CageAuth<F, O>
     }
 }
 
+#[allow(clippy::type_complexity)]
 impl<S, B, F, O> Service<ServiceRequest> for CageAuthMiddleware<S, F, O>
   where S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = actix_web::Error> + 'static,
         S::Future: 'static,
@@ -100,6 +101,7 @@ impl<S, B, F, O> Service<ServiceRequest> for CageAuthMiddleware<S, F, O>
     }
 }
 
+#[allow(clippy::type_complexity)]
 struct BearerExtraction {
     req: Option<ServiceRequest>,
     future: Option<Pin<Box<dyn Future<Output = Result<Credentials, actix_web::Error>>>>>
