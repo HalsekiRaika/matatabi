@@ -44,7 +44,7 @@ impl actix_web::ResponseError for ApiError {
     }
 
     fn error_response(&self) -> actix_web::HttpResponse {
-        actix_web::web::HttpResponse::build(self.status_code()).json(
+        actix_web::HttpResponse::build(self.status_code()).json(
             crate::models::error::ApiError {
                 error: match self {
                     ApiError::Error(..) => "general_error",
