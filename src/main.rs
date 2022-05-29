@@ -7,10 +7,11 @@ mod database;
 mod models;
 mod server;
 mod routes;
+mod routing;
 mod logger;
 
-//#[tokio::main]
-#[actix_web::main]
+#[tokio::main]
+//#[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {
     dotenv().ok();
     tracing_subscriber::registry()
