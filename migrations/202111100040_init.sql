@@ -23,7 +23,7 @@ CREATE TABLE channels (
     liver_id BIGSERIAL,
       FOREIGN KEY (liver_id)
         REFERENCES livers(liver_id),
-    logo_url VARCHAR(128) NOT NULL,
+    logo_url VARCHAR(256) NOT NULL,
     published_at TIMESTAMPTZ NOT NULL,
     description TEXT,
     update_signatures BIGSERIAL NOT NULL
