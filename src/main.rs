@@ -6,6 +6,7 @@ use logger::Logger;
 mod database;
 mod models;
 mod server;
+#[deprecated]
 mod routes;
 mod routing;
 mod logger;
