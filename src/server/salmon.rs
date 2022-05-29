@@ -58,8 +58,8 @@ impl SalmonApi for SalmonUpdater {
 impl SalmonUpdater {
     async fn transition_insert<R, T>(&self, req: Request<Streaming<R>>) -> YarnResult<TaskResult>
       where T: Transactable<T> + Printable + Updatable + From<R> {
-        let logger = Logger::new(Some("Yarn"));
-        logger.info(&format!("Yarn Updater connected from: {}", req.remote_addr().unwrap()));
+        let logger = Logger::new(Some("Salmon"));
+        logger.info(&format!("Salmon WebAPI Grpc connected from: {}", req.remote_addr().unwrap()));
 
         let mut update_data_stream = req.into_inner();
         let mut insertion: Vec<T> = Vec::new();
@@ -114,7 +114,7 @@ impl SalmonUpdater {
             Err(_) => return Err(Status::internal("Failed to commit when inserting data in the database."))
         }
 
-        let logger = Logger::new(Some("Yarn"));
+        let logger = Logger::new(Some("Salmon"));
         let transaction_elapsed = dur_now.elapsed().as_millis();
         result.elapsed(receive_elapsed, transaction_elapsed);
         logger.info(&format!("Transaction elapsed {}ms", &transaction_elapsed));
@@ -197,13 +197,13 @@ impl From<Live> for Lives {
 }
 
 pub async fn run_salmon(pool: sqlx::Pool<Postgres>) -> Result<(), Box<dyn std::error::Error>> {
-    let logger = Logger::new(Some("Yarn"));
+    let logger = Logger::new(Some("Salmon"));
     let bind_ip = "[::1]:50051".to_socket_addrs()
         .unwrap().next()
         .unwrap();
     let server = SalmonUpdater::new(pool);
     tokio::spawn(async move {
-        logger.info("Starting salmon grpc update server!");
+        logger.info("Starting salmon grpc server!");
         Server::builder()
             .add_service(SalmonApiServer::new(server))
             .serve(bind_ip)
