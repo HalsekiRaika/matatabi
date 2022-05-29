@@ -1,0 +1,5 @@
+rd_enabled = true
+fleet_id = "0fc2dadd-283d-4aae-bfad-8b620b815081"
+
+[build]
+sccache = "C:\\Users\\ReiRokusanami\\.cargo\\bin\\sccache.exe"
