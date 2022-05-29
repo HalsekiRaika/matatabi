@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use chrono::{DateTime, Local};
 use sqlx::{Row, Postgres, Transaction};
 use crate::database::models::id_object::{ChannelId, LiverId};
@@ -47,7 +49,7 @@ impl Updatable for Channels {
     async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
         // language=SQL
         let may_older: i64 = sqlx::query(r#"
-            SELECT update_signatures FROM channels WHERE channel_id = $1
+            SELECT update_signatures FROM channels WHERE channel_id LIKE $1
         "#).bind(&self.channel_id)
            .fetch_one(&mut *transaction)
            .await?
@@ -78,7 +80,7 @@ impl Transactable<Channels> for Channels {
     async fn update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), sqlx::Error> {
         // language=SQL
         let old = sqlx::query_as::<_, Channels>(r#"
-            SELECT * FROM channels WHERE channel_id = $1
+            SELECT * FROM channels WHERE channel_id LIKE $1
         "#).bind(&self.channel_id)
            .fetch_one(&mut *transaction)
            .await?;
@@ -86,9 +88,11 @@ impl Transactable<Channels> for Channels {
         let new = sqlx::query_as::<_, Channels>(r#"
             UPDATE channels
               SET description = $1, update_signatures = $2
-            WHERE channel_id = $3
+            WHERE channel_id LIKE $3
             RETURNING *
-        "#).bind(&self.channel_id)
+        "#).bind(&self.description)
+           .bind(self.update_signatures)
+           .bind(&self.channel_id)
            .fetch_one(&mut *transaction)
            .await?;
         Ok((old, new))
@@ -109,7 +113,7 @@ impl Transactable<Channels> for Channels {
     async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, sqlx::Error> {
         // language=SQL
         let del = sqlx::query_as::<_, LiverId>(r#"
-            DELETE FROM channels WHERE channel_id = $1 RETURNING liver_id
+            DELETE FROM channels WHERE channel_id LIKE $1 RETURNING liver_id
         "#).bind(&self.channel_id)
            .fetch_one(&mut *transaction)
            .await?;

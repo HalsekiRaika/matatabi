@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use sqlx::{Postgres, Row, Transaction};
 use crate::database::models::id_object::{AffiliationId, LiverId};
 use crate::database::models::{Printable, Transactable, Updatable};

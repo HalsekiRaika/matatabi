@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::id_object::AffiliationId;
 use super::update_signature::UpdateSignature;
 use sqlx::{FromRow, Row, Transaction};
