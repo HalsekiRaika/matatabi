@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use core::option::Option;
 use chrono::{DateTime, Local};
 use sqlx::{Row, Postgres, Transaction};
@@ -17,7 +19,7 @@ pub struct Lives {
     will_start_at: Option<DateTime<Local>>,
     started_at: Option<DateTime<Local>>,
     thumbnail_url: String,
-    update_signature: UpdateSignature
+    update_signatures: UpdateSignature
 }
 
 impl Printable for Lives {
@@ -34,16 +36,16 @@ impl Printable for Lives {
 impl Updatable for Lives {
     fn apply_signature(&self, sign: i64) -> Self {
         let mut a = self.clone();
-        a.update_signature = UpdateSignature(sign);
+        a.update_signatures = UpdateSignature(sign);
         a
     }
 
     fn is_empty_sign(&self) -> bool {
-        self.update_signature.0 <= 1
+        self.update_signatures.0 <= 1
     }
 
     fn get_signature(&self) -> i64 {
-        self.update_signature.0
+        self.update_signatures.0
     }
 
     async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
@@ -54,7 +56,7 @@ impl Updatable for Lives {
             .fetch_one(&mut *transaction)
             .await?
             .get::<i64, _>(0);
-        Ok(self.update_signature.0 > may_older)
+        Ok(self.update_signatures.0 > may_older)
     }
 }
 
@@ -78,7 +80,7 @@ impl Transactable<Lives> for Lives {
            .bind(self.will_start_at)
            .bind(self.started_at)
            .bind(&self.thumbnail_url)
-           .bind(self.update_signature)
+           .bind(self.update_signatures)
            .fetch_one(&mut *transaction)
            .await?;
         Ok(insert)
@@ -103,7 +105,8 @@ impl Transactable<Lives> for Lives {
            .bind(self.updated_at)
            .bind(self.will_start_at)
            .bind(self.started_at)
-           .bind(self.update_signature)
+           .bind(self.update_signatures)
+           .bind(&self.video_id)
            .fetch_one(&mut *transaction)
            .await?;
         Ok((old, new))
@@ -178,7 +181,7 @@ impl LivesBuilder {
             will_start_at: self.will_start_at,
             started_at: self.started_at,
             thumbnail_url: self.thumbnail_url,
-            update_signature: self.update_signature
+            update_signatures: self.update_signature
         }
     }
 }
