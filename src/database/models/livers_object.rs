@@ -17,7 +17,7 @@ pub struct Livers {
 
 impl Display for Livers {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "liver >> id: {}, affiliation(id): {:?}, name: {}", self.liver_id, self.affiliation_id, self.name)
+        write!(f, "liver >> {}, affiliation(id): {:?}, name: {}", self.liver_id, self.affiliation_id, self.name)
     }
 }
 

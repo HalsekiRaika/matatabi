@@ -20,7 +20,7 @@ pub struct Channels {
 
 impl Display for Channels {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "channel >> id: {}, liver(id): {:?}", self.channel_id, self.liver_id)
+        write!(f, "channel >> {}, liver(id): {:?}", self.channel_id, self.liver_id)
     }
 }
 
