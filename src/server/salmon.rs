@@ -13,14 +13,13 @@ use yansi::Paint;
 use proto::salmon_api_server::{SalmonApiServer, SalmonApi};
 use proto::{Affiliation, Channel, Liver, Live, TaskResult};
 
-use crate::database::models::{Printable, Updatable, Transactable};
+use crate::database::models::{Printable, Updatable, Transactable, Transact};
 use crate::database::models::affiliation_object::Affiliations;
 use crate::database::models::channel_object::{Channels, ChannelsBuilder};
 use crate::database::models::id_object::{ChannelId, LiverId, VideoId};
 use crate::database::models::livers_object::Livers;
 use crate::database::models::upcoming_object::{Lives, LivesBuilder};
-use crate::database::models::update_signature::UpdateSignature;
-use crate::logger::Logger;
+use crate::database::models::update_signature::{LatestEq, Signed, UpdateSignature, Version};
 
 #[allow(clippy::module_inception)]
 mod proto { tonic::include_proto!("salmon"); }
@@ -39,21 +38,21 @@ impl SalmonAutoCollector {
 type SalmonResult<T> = Result<Response<T>, Status>;
 
 #[tonic::async_trait]
-impl SalmonApi for SalmonUpdater {
-    async fn insert_req_live(&self, req: Request<Streaming<Live>>) -> YarnResult<TaskResult> {
-        self.transition_insert::<Live, Lives>(req).await
+impl SalmonApi for SalmonAutoCollector {
+    async fn insert_req_live(&self, req: Request<Streaming<Live>>) -> SalmonResult<TaskResult> {
+        self.collect::<Live, Lives>(req).await
     }
 
-    async fn insert_req_channel(&self, req: Request<Streaming<Channel>>) -> YarnResult<TaskResult> {
-        self.transition_insert::<Channel, Channels>(req).await
+    async fn insert_req_channel(&self, req: Request<Streaming<Channel>>) -> SalmonResult<TaskResult> {
+        self.collect::<Channel, Channels>(req).await
     }
 
-    async fn insert_req_v_tuber(&self, req: Request<Streaming<Liver>>) -> YarnResult<TaskResult> {
-        self.transition_insert::<Liver, Livers>(req).await
+    async fn insert_req_v_tuber(&self, req: Request<Streaming<Liver>>) -> SalmonResult<TaskResult> {
+        self.collect::<Liver, Livers>(req).await
     }
 
-    async fn insert_req_affiliation(&self, req: Request<Streaming<Affiliation>>) -> YarnResult<TaskResult> {
-        self.transition_insert::<Affiliation, Affiliations>(req).await
+    async fn insert_req_affiliation(&self, req: Request<Streaming<Affiliation>>) -> SalmonResult<TaskResult> {
+        self.collect::<Affiliation, Affiliations>(req).await
     }
 }
 
