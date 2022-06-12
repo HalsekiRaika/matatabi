@@ -1,26 +1,29 @@
 use serde::{Serialize, Deserialize};
-use crate::database::models::livers_object::Livers;
+use crate::database::models::id_object::LiverId as FromDatabaseLiverId;
+use crate::database::models::livers_object::Livers as FromDatabaseLiver;
 
-use super::affiliation::AffiliationId;
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LiverId(pub i64);
+use super::NumId;
+use super::affiliation::Affiliation;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Liver {
-    pub liver_id: LiverId,
-    pub affiliation: Option<AffiliationId>,
+    pub liver_id: NumId<Liver>,
+    pub affiliation: Option<NumId<Affiliation>>,
     pub logo_url: String,
 }
 
-impl From<crate::database::models::livers_object::Livers> for Liver {
-    fn from(database_obj: Livers) -> Self {
-        let aff = database_obj.get_affiliation_id().map(AffiliationId::from);
+impl From<FromDatabaseLiverId> for NumId<Liver> {
+    fn from(database: FromDatabaseLiverId) -> Self {
+        NumId::new(database.0)
+    }
+}
 
+impl From<FromDatabaseLiver> for Liver {
+    fn from(database_obj: FromDatabaseLiver) -> Self {
         Self {
-            liver_id: LiverId::from(database_obj.get_liver_id()),
-            affiliation: aff,
-            logo_url: format!("https://reiva.dev/api/resources/logos/{}", database_obj.get_liver_id().0)
+            liver_id: NumId::from(database_obj.liver_id()),
+            affiliation: database_obj.affiliation_id().map(NumId::from),
+            logo_url: format!("https://reiva.dev/api/resources/logos/{}", database_obj.liver_id().0)
         }
     }
 }
