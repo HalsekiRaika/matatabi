@@ -13,7 +13,7 @@ use yansi::Paint;
 use proto::salmon_api_server::{SalmonApiServer, SalmonApi};
 use proto::{Affiliation, Channel, Liver, Live, TaskResult};
 
-use crate::database::models::{Printable, Updatable, Transactable, Transact};
+use crate::database::models::Transact;
 use crate::database::models::affiliation_object::Affiliations;
 use crate::database::models::channel_object::{Channels, ChannelsBuilder};
 use crate::database::models::id_object::{ChannelId, LiverId, VideoId};
@@ -53,74 +53,6 @@ impl SalmonApi for SalmonAutoCollector {
 
     async fn insert_req_affiliation(&self, req: Request<Streaming<Affiliation>>) -> SalmonResult<TaskResult> {
         self.collect::<Affiliation, Affiliations>(req).await
-    }
-}
-
-impl SalmonAutoCollector {
-    #[deprecated]
-    async fn transition_insert<R, T>(&self, req: Request<Streaming<R>>) -> SalmonResult<TaskResult>
-      where T: Transactable<T> + Printable + Updatable + From<R> {
-        let logger = Logger::new(Some("Salmon"));
-        logger.info(&format!("Salmon WebAPI Grpc connected from: {}", req.remote_addr().unwrap()));
-
-        let mut update_data_stream = req.into_inner();
-        let mut insertion: Vec<T> = Vec::new();
-        let mut result = ResultMsg::default();
-        let dur_now = Instant::now();
-
-        while let Some(receive) = update_data_stream.next().await {
-            let receive = receive?;
-            let receive = T::from(receive);
-            logger.info(&format!("[ {:<10} ] {}", Paint::green("RECEIVE"), receive.get_primary_name()));
-            insertion.push(receive);
-            result.received()
-        }
-        let receive_elapsed = dur_now.elapsed().as_millis();
-        let dur_now = Instant::now();
-
-        let mut transaction = match self.pool.begin().await {
-            Ok(transaction) => transaction,
-            Err(_) => return Err(Status::failed_precondition("Failed to begin build transaction."))
-        };
-        let logger = Logger::new(Some("Transaction"));
-        for item in &insertion {
-            if !item.exists(&mut transaction).await.unwrap() {
-                let insert = match item.apply_signature(UpdateSignature::default().as_i64()).insert(&mut transaction).await {
-                    Ok(insert) => insert,
-                    Err(reason) => return { println!("{:?}", reason); Err(Status::internal("Failed to data insert.")) }
-                };
-                logger.info(&format!("[ {:<10} ] {} + {}", Paint::cyan("INSERT"), insert.get_secondary_name(), insert.get_signature()));
-                result.inserted();
-            } else if !item.is_empty_sign() && item.can_update(&mut transaction).await.unwrap_or(false) {
-                let (old, update) = match item.update(&mut transaction).await {
-                    Ok((old, update)) => (old, update),
-                    Err(_) => return Err(Status::internal("Failed to data update."))
-                };
-                logger.info(&format!("[ {:<10} ] {} : {} > {}", Paint::yellow("UPDATE"),
-                    &update.get_secondary_name(), &old.get_primary_name(), &update.get_primary_name()));
-                result.updated();
-            } else if item.exists(&mut transaction).await.unwrap() && item.get_signature() < 0 {
-                let delete = match item.delete(&mut transaction).await {
-                    Ok(delete) => delete,
-                    Err(_) => return Err(Status::internal("Failed to data delete."))
-                };
-                logger.caut(&format!("[ {:<10} ] {}", Paint::magenta("DELETE"), delete));
-                result.deleted();
-            } else {
-                result.skipped();
-            }
-        }
-
-        match transaction.commit().await {
-            Ok(_) => (),
-            Err(_) => return Err(Status::internal("Failed to commit when inserting data in the database."))
-        }
-
-        let logger = Logger::new(Some("Salmon"));
-        let transaction_elapsed = dur_now.elapsed().as_millis();
-        result.elapsed(receive_elapsed, transaction_elapsed);
-        logger.info(&format!("Transaction elapsed {}ms", &transaction_elapsed));
-        Ok(Response::new(TaskResult { message: result.message() }))
     }
 }
 
@@ -167,34 +99,6 @@ impl SalmonAutoCollector {
 
         tracing::info!("transaction elapsed {}ms", dur_now.elapsed().as_millis());
         Ok(Response::new(TaskResult { message: "".to_string() }))
-    }
-}
-
-#[deprecated]
-#[derive(Default, Serialize)]
-struct ResultMsg {
-    receive: u32,
-    insert_count: u32,
-    update_count: u32,
-    delete_count: u32,
-    skip_count: u32,
-    receive_elapsed: u128,
-    transaction_elapsed: u128
-}
-
-impl ResultMsg {
-    fn received(&mut self) { self.receive += 1; }
-    fn inserted(&mut self) { self.insert_count += 1; }
-    fn updated(&mut self) { self.update_count += 1; }
-    fn deleted(&mut self) { self.delete_count += 1; }
-    fn skipped(&mut self) { self.skip_count += 1; }
-    fn elapsed(&mut self, receive: u128, transaction: u128) {
-        self.receive_elapsed = receive;
-        self.transaction_elapsed = transaction;
-    }
-
-    fn message(&self) -> String {
-        serde_json::to_string(self).unwrap_or_else(|_| "result is not available.".to_string())
     }
 }
 
