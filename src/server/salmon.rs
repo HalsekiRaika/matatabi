@@ -55,8 +55,9 @@ impl SalmonApi for SalmonUpdater {
     }
 }
 
-impl SalmonUpdater {
-    async fn transition_insert<R, T>(&self, req: Request<Streaming<R>>) -> YarnResult<TaskResult>
+impl SalmonAutoCollector {
+    #[deprecated]
+    async fn transition_insert<R, T>(&self, req: Request<Streaming<R>>) -> SalmonResult<TaskResult>
       where T: Transactable<T> + Printable + Updatable + From<R> {
         let logger = Logger::new(Some("Salmon"));
         logger.info(&format!("Salmon WebAPI Grpc connected from: {}", req.remote_addr().unwrap()));
@@ -122,6 +123,53 @@ impl SalmonUpdater {
     }
 }
 
+impl SalmonAutoCollector {
+    pub async fn collect<R, T>(&self, receive: Request<Streaming<R>>) -> SalmonResult<TaskResult>
+        where T: From<R> + Display + Transact<TransactItem = T> + Version + LatestEq<ComparisonItem = T> + Signed
+    {
+        const ZERO_VER: UpdateSignature = UpdateSignature(0);
+        let dur_now = Instant::now();
+        let collector_item = receive.into_inner()
+            .map(Result::unwrap)
+            .map(T::from)
+            .inspect(|transact_item| tracing::debug!("{:<10} {}", yansi::Paint::green("receive"), transact_item))
+            .collect::<VecDeque<T>>()
+            .await;
+        tracing::info!("received data: {}ms", dur_now.elapsed().as_millis());
+
+        let dur_now = Instant::now();
+        let mut transaction = self.pool.begin().await
+            .map_err(|e| Status::failed_precondition(format!("Failed to begin build transaction: {:?}", e)))?;
+
+        for item in collector_item {
+            if !item.exists(&mut transaction).await
+                .map_err(|e| Status::internal(format!("insert: {:?}", e)))? {
+                let ins = item.apply(UpdateSignature::default()).insert(&mut transaction).await
+                    .map_err(|e| Status::internal(format!("{:?}", e)))?;
+                tracing::debug!("{:<10} {}", yansi::Paint::cyan("insert"), ins);
+            } else if !item.irregular_sign() && item.version_compare(item.sign(&mut transaction).await
+                .map_err(|e| Status::internal(format!("version_compare: {:?}", e)))?) {
+                let upd = item.update(&mut transaction).await
+                    .map_err(|e| Status::internal(format!("update: {:?}", e)))?;
+                tracing::debug!("{:<10} old: {}", yansi::Paint::yellow("update"), upd.0);
+                tracing::debug!("{:<10} new: {}", yansi::Paint::yellow("update"), upd.1);
+            } else if item.version() < ZERO_VER && item.exists(&mut transaction).await
+                .map_err(|e| Status::internal(format!("delete: {:?}", e)))? {
+                let del = item.delete(&mut transaction).await
+                    .map_err(|e| Status::internal(format!("{:?}", e)))?;
+                tracing::debug!("{:<10} {}", yansi::Paint::magenta("delete"), del)
+            }
+        }
+
+        transaction.commit().await
+            .map_err(|e| Status::internal(format!("Failed to commit: {:?}", e)))?;
+
+        tracing::info!("transaction elapsed {}ms", dur_now.elapsed().as_millis());
+        Ok(Response::new(TaskResult { message: "".to_string() }))
+    }
+}
+
+#[deprecated]
 #[derive(Default, Serialize)]
 struct ResultMsg {
     receive: u32,
