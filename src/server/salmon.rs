@@ -8,8 +8,8 @@ use tokio::time::Instant;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status, Streaming};
 use yansi::Paint;
-use salmon::salmon_api_server::{SalmonApiServer, SalmonApi};
-use salmon::{Affiliation, Channel, Liver, Live, TaskResult};
+use proto::salmon_api_server::{SalmonApiServer, SalmonApi};
+use proto::{Affiliation, Channel, Liver, Live, TaskResult};
 
 use crate::database::models::{Printable, Updatable, Transactable};
 use crate::database::models::affiliation_object::Affiliations;
@@ -21,20 +21,20 @@ use crate::database::models::update_signature::UpdateSignature;
 use crate::logger::Logger;
 
 #[allow(clippy::module_inception)]
-pub mod salmon { tonic::include_proto!("salmon"); }
+mod proto { tonic::include_proto!("salmon"); }
 
 #[derive(Debug)]
-pub struct SalmonUpdater {
+pub struct SalmonAutoCollector {
     pool: sqlx::Pool<Postgres>
 }
 
-impl SalmonUpdater {
+impl SalmonAutoCollector {
     fn new(connection_pool: sqlx::Pool<Postgres>) -> Self {
         Self { pool: connection_pool }
     }
 }
 
-type YarnResult<T> = Result<Response<T>, Status>;
+type SalmonResult<T> = Result<Response<T>, Status>;
 
 #[tonic::async_trait]
 impl SalmonApi for SalmonUpdater {
@@ -245,13 +245,12 @@ impl From<Live> for Lives {
 }
 
 pub async fn run_salmon(pool: sqlx::Pool<Postgres>) -> Result<(), Box<dyn std::error::Error>> {
-    let logger = Logger::new(Some("Salmon"));
     let bind_ip = "[::1]:50051".to_socket_addrs()
         .unwrap().next()
         .unwrap();
-    let server = SalmonUpdater::new(pool);
+    let server = SalmonAutoCollector::new(pool);
     tokio::spawn(async move {
-        logger.info("Starting salmon grpc server!");
+        tracing::debug!("listening salmon autocollector from {}", bind_ip);
         Server::builder()
             .add_service(SalmonApiServer::new(server))
             .serve(bind_ip)
