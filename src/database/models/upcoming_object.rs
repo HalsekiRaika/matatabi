@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 
-use core::option::Option;
+use std::fmt::{Display, Formatter};
 use chrono::{DateTime, Local};
 use sqlx::{Row, Postgres, Transaction};
-use crate::database::models::{Printable, Updatable, Transactable};
-use crate::database::models::update_signature::UpdateSignature;
 
+use super::Transact;
 use super::id_object::{ChannelId, VideoId};
+use super::update_signature::{UpdateSignature, LatestEq, Signed, Version};
 
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
 pub struct Lives {
@@ -22,49 +22,57 @@ pub struct Lives {
     update_signatures: UpdateSignature
 }
 
-impl Printable for Lives {
-    fn get_primary_name(&self) -> String {
-        self.video_id.clone().0
+impl Display for Lives {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "live(video) >> {}, title: {}", self.video_id, self.title)
     }
+}
 
-    fn get_secondary_name(&self) -> String {
-        self.channel_id.clone().unwrap_or_else(|| ChannelId("none".to_string())).0
+impl Version for Lives {
+    fn version(&self) -> UpdateSignature {
+        self.update_signatures
     }
 }
 
 #[async_trait::async_trait]
-impl Updatable for Lives {
-    fn apply_signature(&self, sign: i64) -> Self {
-        let mut a = self.clone();
-        a.update_signatures = UpdateSignature(sign);
-        a
-    }
-
-    fn is_empty_sign(&self) -> bool {
-        self.update_signatures.0 <= 1
-    }
-
-    fn get_signature(&self) -> i64 {
-        self.update_signatures.0
-    }
-
-    async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
+impl Signed for Lives {
+    async fn sign(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<UpdateSignature, sqlx::Error> {
         // language=SQL
-        let may_older: i64 = sqlx::query(r#"
+        let current = sqlx::query(r#"
             SELECT update_signatures FROM lives WHERE video_id LIKE $1
         "#).bind(&self.video_id)
             .fetch_one(&mut *transaction)
             .await?
-            .get::<i64, _>(0);
-        Ok(self.update_signatures.0 > may_older)
+            .try_get::<UpdateSignature, _>(0)?;
+        Ok(current)
+    }
+}
+
+impl LatestEq for Lives {
+    type ComparisonItem = Self;
+
+    fn apply(self, sign: UpdateSignature) -> Self::ComparisonItem {
+        let mut a = self;
+        a.update_signatures = sign;
+        a
+    }
+
+    fn version_compare(&self, compare: UpdateSignature) -> bool {
+        self.update_signatures.0 > compare.0
+    }
+
+    fn irregular_sign(&self) -> bool {
+        self.update_signatures.0 <= 1
     }
 }
 
 #[async_trait::async_trait]
-impl Transactable<Lives> for Lives {
-    async fn insert(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, sqlx::Error> {
+impl Transact for Lives {
+    type TransactItem = Self;
+
+    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, sqlx::Error> {
         // language=SQL
-        let insert = sqlx::query_as::<_, Lives>(r#"
+        let insert = sqlx::query_as::<_, Self>(r#"
             INSERT INTO lives
                 (video_id, channel_id, title, description,
                 published_at, updated_at, will_start_at, started_at,
@@ -86,15 +94,25 @@ impl Transactable<Lives> for Lives {
         Ok(insert)
     }
 
-    async fn update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), sqlx::Error> {
+    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, sqlx::Error> {
         // language=SQL
-        let old = sqlx::query_as::<_, Lives>(r#"
-            SELECT * FROM lives WHERE video_id LIKE $1
+        let delete = sqlx::query_as::<_, Self>(r#"
+            DELETE FROM lives WHERE video_id LIKE $1 RETURNING *
         "#).bind(&self.video_id)
            .fetch_one(&mut *transaction)
            .await?;
+        Ok(delete)
+    }
+
+    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::TransactItem, Self::TransactItem), sqlx::Error> {
         // language=SQL
-        let new = sqlx::query_as::<_, Lives>(r#"
+        let old = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM lives WHERE video_id LIKE $1
+        "#).bind(&self.video_id)
+            .fetch_one(&mut *transaction)
+            .await?;
+        // language=SQL
+        let new = sqlx::query_as::<_, Self>(r#"
             UPDATE lives
             SET title = $1, description = $2, updated_at = $3,
                 will_start_at = $4, started_at = $5, update_signatures = $6
@@ -117,22 +135,10 @@ impl Transactable<Lives> for Lives {
         let video_exists = sqlx::query(r#"
             SELECT EXISTS(SELECT 1 FROM lives WHERE video_id LIKE $1)
         "#).bind(&self.video_id)
-           .fetch_one(&mut *transaction)
-           .await?
-           .get::<bool, _>(0);
-
+            .fetch_one(&mut *transaction)
+            .await?
+            .try_get::<bool, _>(0)?;
         Ok(video_exists)
-    }
-
-
-    async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, sqlx::Error> {
-        // language=SQL
-        let delete = sqlx::query_as::<_, UpdateSignature>(r#"
-            DELETE FROM lives WHERE video_id LIKE $1 RETURNING update_signatures
-        "#).bind(&self.video_id)
-           .fetch_one(&mut *transaction)
-           .await?;
-        Ok(delete.0)
     }
 }
 

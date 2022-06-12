@@ -1,8 +1,8 @@
-use sqlx::{Type, FromRow};
+use sqlx::{Type, FromRow, Postgres, Transaction};
 use serde::{Serialize, Deserialize};
 use chrono::Utc;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize, Type, FromRow)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize, Type, FromRow)]
 #[sqlx(transparent)]
 pub struct UpdateSignature(pub i64);
 
@@ -14,11 +14,27 @@ impl UpdateSignature {
 
 impl Default for UpdateSignature {
     fn default() -> Self {
-        let date = Utc::now();
-        let a: i64 = date.format("%Y%m%d%H%M")
+        Self(Utc::now()
+            .format("%Y%m%d%H%M")
             .to_string()
             .parse()
-            .unwrap();
-        Self { 0: a }
+            .unwrap())
     }
+}
+
+pub trait Version {
+    fn version(&self) -> UpdateSignature;
+}
+
+pub trait LatestEq: Version {
+    type ComparisonItem;
+
+    fn apply(self, sign: UpdateSignature) -> Self::ComparisonItem;
+    fn version_compare(&self, compare: UpdateSignature) -> bool;
+    fn irregular_sign(&self) -> bool;
+}
+
+#[async_trait::async_trait]
+pub trait Signed {
+    async fn sign(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<UpdateSignature, sqlx::Error>;
 }

@@ -1,10 +1,12 @@
 #![allow(dead_code)]
 
+use std::fmt::{Display, Formatter};
 use chrono::{DateTime, Local};
-use sqlx::{Row, Postgres, Transaction};
-use crate::database::models::id_object::{ChannelId, LiverId};
-use crate::database::models::{Printable, Transactable, Updatable};
-use crate::database::models::update_signature::UpdateSignature;
+use sqlx::{Row, Postgres, Transaction, Error};
+
+use super::Transact;
+use super::id_object::{ChannelId, LiverId};
+use super::update_signature::{UpdateSignature, Version, Signed, LatestEq};
 
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
 pub struct Channels {
@@ -16,53 +18,79 @@ pub struct Channels {
     update_signatures: UpdateSignature
 }
 
-impl Channels {
-    
+impl Display for Channels {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "channel >> id: {}, liver(id): {:?}", self.channel_id, self.liver_id)
+    }
 }
 
-impl Printable for Channels {
-    fn get_primary_name(&self) -> String {
-        self.channel_id.clone().0
+impl Channels {
+    pub fn published_at(&self) -> DateTime<Local> {
+        self.published_at
     }
 
-    fn get_secondary_name(&self) -> String {
-        self.liver_id.unwrap_or(LiverId(0)).0.to_string()
+    pub fn breach_channel_id(&self) -> ChannelId {
+        self.channel_id.clone()
+    }
+
+    pub fn liver_id(&self) -> Option<LiverId> {
+        self.liver_id
+    }
+
+    pub fn breach_logo_url(&self) -> String {
+        self.logo_url.clone()
+    }
+
+    pub fn breach_description(&self) -> String {
+        self.description.clone()
+    }
+}
+
+impl Version for Channels {
+    fn version(&self) -> UpdateSignature {
+        self.update_signatures
     }
 }
 
 #[async_trait::async_trait]
-impl Updatable for Channels {
-    fn apply_signature(&self, sign: i64) -> Self {
-        let mut a = self.clone();
-        a.update_signatures = UpdateSignature(sign);
+impl Signed for Channels {
+    async fn sign(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<UpdateSignature, Error> {
+        // language=SQL
+        let current = sqlx::query(r#"
+            SELECT update_signatures FROM channels WHERE channel_id LIKE $1
+        "#).bind(&self.channel_id)
+            .fetch_one(&mut *transaction)
+            .await?
+            .try_get::<UpdateSignature, _>(0)?;
+        Ok(current)
+    }
+}
+
+impl LatestEq for Channels {
+    type ComparisonItem = Self;
+
+    fn apply(self, sign: UpdateSignature) -> Self::ComparisonItem {
+        let mut a = self;
+        a.update_signatures = sign;
         a
     }
 
-    fn is_empty_sign(&self) -> bool {
+    fn version_compare(&self, compare: UpdateSignature) -> bool {
+        self.update_signatures.0 > compare.0
+    }
+
+    fn irregular_sign(&self) -> bool {
         self.update_signatures.0 <= 1
-    }
-
-    fn get_signature(&self) -> i64 {
-        self.update_signatures.0
-    }
-
-    async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
-        // language=SQL
-        let may_older: i64 = sqlx::query(r#"
-            SELECT update_signatures FROM channels WHERE channel_id LIKE $1
-        "#).bind(&self.channel_id)
-           .fetch_one(&mut *transaction)
-           .await?
-           .get::<i64, _>(0);
-        Ok(self.update_signatures.0 > may_older)
     }
 }
 
 #[async_trait::async_trait]
-impl Transactable<Channels> for Channels {
-    async fn insert(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, sqlx::Error> {
+impl Transact for Channels {
+    type TransactItem = Self;
+
+    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, Error> {
         // language=SQL
-        let insert = sqlx::query_as::<_, Channels>(r#"
+        let ins = sqlx::query_as::<_, Self>(r#"
             INSERT INTO channels (channel_id, liver_id, logo_url, published_at, description, update_signatures)
              VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
@@ -74,18 +102,28 @@ impl Transactable<Channels> for Channels {
            .bind(self.update_signatures)
            .fetch_one(&mut *transaction)
            .await?;
-        Ok(insert)
+        Ok(ins)
     }
 
-    async fn update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), sqlx::Error> {
+    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, Error> {
         // language=SQL
-        let old = sqlx::query_as::<_, Channels>(r#"
+        let del = sqlx::query_as::<_, Self>(r#"
+            DELETE FROM channels WHERE channel_id LIKE $1 RETURNING *
+        "#).bind(&self.channel_id)
+           .fetch_one(&mut *transaction)
+           .await?;
+        Ok(del)
+    }
+
+    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::TransactItem, Self::TransactItem), Error> {
+        // language=SQL
+        let old = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM channels WHERE channel_id LIKE $1
         "#).bind(&self.channel_id)
            .fetch_one(&mut *transaction)
            .await?;
         // language=SQL
-        let new = sqlx::query_as::<_, Channels>(r#"
+        let new = sqlx::query_as::<_, Self>(r#"
             UPDATE channels
               SET description = $1, update_signatures = $2
             WHERE channel_id LIKE $3
@@ -98,26 +136,16 @@ impl Transactable<Channels> for Channels {
         Ok((old, new))
     }
 
-    async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
+    async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, Error> {
         // language=SQL
         let channel_exists = sqlx::query(r#"
             SELECT EXISTS(SELECT 1 FROM channels WHERE channel_id LIKE $1)
         "#).bind(&self.channel_id)
            .fetch_one(&mut *transaction)
            .await?
-           .get::<bool, _>(0);
+           .try_get::<bool, _>(0)?;
 
         Ok(channel_exists)
-    }
-
-    async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, sqlx::Error> {
-        // language=SQL
-        let del = sqlx::query_as::<_, LiverId>(r#"
-            DELETE FROM channels WHERE channel_id LIKE $1 RETURNING liver_id
-        "#).bind(&self.channel_id)
-           .fetch_one(&mut *transaction)
-           .await?;
-        Ok(del.0)
     }
 }
 

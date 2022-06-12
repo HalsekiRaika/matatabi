@@ -1,16 +1,24 @@
 #![allow(dead_code)]
 
-use super::id_object::AffiliationId;
-use super::update_signature::UpdateSignature;
-use sqlx::{FromRow, Row, Transaction};
+use std::fmt::{Display, Formatter};
+use sqlx::{Error, FromRow, Row, Transaction};
 use sqlx::postgres::Postgres;
-use crate::database::models::{Printable, Updatable, Transactable, RawString};
+
+use super::Transact;
+use super::id_object::AffiliationId;
+use super::update_signature::{UpdateSignature, Version, Signed, LatestEq};
 
 #[derive(Debug, Clone, PartialEq, Eq, FromRow)]
 pub struct Affiliations {
     affiliation_id: AffiliationId,
     name: String,
     update_signatures: UpdateSignature
+}
+
+impl Display for Affiliations {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "affiliation >> {}, name: {}", self.affiliation_id, self.name)
+    }
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -39,8 +47,6 @@ impl Affiliations {
     pub fn get_name(&self) -> &str { &self.name }
 }
 
-/// The reason for using sqlx::Executor<'a, Database = Postgres>
-/// is that it is an abstraction to support the types provided by the actix data propagation.
 impl Affiliations {
     pub async fn fetch_id_from_name<'a, E>(
         name: impl Into<String>,
@@ -57,18 +63,18 @@ impl Affiliations {
     }
 
     pub async fn fetch_name_from_id<'a, E>(
-        id: AffiliationId,
+        id: i64,
         transaction: E
-    ) -> Result<Option<String>, sqlx::Error>
-      where E: sqlx::Executor<'a, Database = Postgres> + Copy{
+    ) -> Result<Option<Self>, sqlx::Error>
+      where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL
-        let name = sqlx::query_as::<_, RawString>(r#"
-            SELECT name FROM affiliations WHERE affiliation_id = $1
-        "#).bind(id.0)
+        let searched = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM affiliations WHERE affiliation_id = $1
+        "#).bind(id)
            .fetch_optional(transaction)
            .await?;
 
-        Ok(Some(name.unwrap().0))
+        Ok(searched)
     }
 
     pub async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
@@ -82,49 +88,51 @@ impl Affiliations {
     }
 }
 
-impl Printable for Affiliations {
-    fn get_primary_name(&self) -> String {
-        self.name.clone()
+impl Version for Affiliations {
+    fn version(&self) -> UpdateSignature {
+        self.update_signatures
     }
-    fn get_secondary_name(&self) -> String { self.affiliation_id.0.to_string() }
 }
 
 #[async_trait::async_trait]
-impl Updatable for Affiliations {
-    fn apply_signature(&self, sign: i64) -> Self {
-        let mut a = self.clone();
-        a.update_signatures = UpdateSignature(sign);
+impl Signed for Affiliations {
+    async fn sign(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<UpdateSignature, Error> {
+        // language=SQL
+        let current = sqlx::query(r#"
+            SELECT update_signatures FROM affiliations WHERE affiliation_id = $1
+        "#).bind(self.affiliation_id)
+            .fetch_one(&mut *transaction)
+            .await?
+            .try_get::<UpdateSignature, _>(0)?;
+        Ok(current)
+    }
+}
+
+impl LatestEq for Affiliations {
+    type ComparisonItem = Self;
+
+    fn apply(self, sign: UpdateSignature) -> Self::ComparisonItem {
+        let mut a = self;
+        a.update_signatures = sign;
         a
     }
 
-    fn is_empty_sign(&self) -> bool {
-        self.update_signatures.0 <= 1
+    fn version_compare(&self, compare: UpdateSignature) -> bool {
+        self.update_signatures.0 > compare.0
     }
 
-    fn get_signature(&self) -> i64 {
-        self.update_signatures.0
-    }
-    
-    async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
-        // language=SQL
-        let may_older: i64 = sqlx::query(r#"
-            SELECT update_signatures FROM affiliations WHERE affiliation_id = $1
-        "#).bind(self.affiliation_id)
-           .fetch_one(&mut *transaction)
-           .await?
-           .get::<i64, _>(0);
-        Ok(self.update_signatures.0 > may_older)
+    fn irregular_sign(&self) -> bool {
+        self.update_signatures.0 <= 1
     }
 }
 
 #[async_trait::async_trait]
-impl Transactable<Affiliations> for Affiliations {
+impl Transact for Affiliations {
+    type TransactItem = Self;
 
-    /// ### Arguments
-    /// * `transaction` - Instances of Postgres database connections.
-    async fn insert(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, sqlx::Error> {
+    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, Error> {
         // language=SQL
-        let insert: Affiliations = sqlx::query_as::<_, Self>(r#"
+        let ins = sqlx::query_as::<_, Self>(r#"
             INSERT INTO affiliations (affiliation_id, name, update_signatures)
              VALUES ($1, $2, $3)
             RETURNING *
@@ -133,29 +141,30 @@ impl Transactable<Affiliations> for Affiliations {
            .bind(self.update_signatures.0)
            .fetch_one(&mut *transaction)
            .await?;
-        Ok(insert)
+        Ok(ins)
     }
 
-    /// Update the [Affiliations] data stored in the database.
-    ///
-    /// ### Return Values
-    /// `Result<(Self, Self), Error>` - Result will be returned as the return value.
-    /// * `(Affiliations, Affiliations)` - The elements of the tuple are (old-data, new-data).
-    /// * `Error` - Error returns the error of sqlx.
-    /// ### Arguments
-    /// * `transaction` - Instances of Postgres database connections.
-    async fn update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), sqlx::Error> {
-        // fixme: It is not a fully parallel process, so I should use tokio::join! (まぁ面倒くさいだけなんだけど。)
+    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, Error> {
         // language=SQL
-        let old: Affiliations = sqlx::query_as::<_, Self>(r#"
-            SELECT * FROM affiliations WHERE affiliation_id = $1
+        let del = sqlx::query_as::<_, Self>(r#"
+            DELETE FROM affiliations WHERE affiliation_id = $1 RETURNING *
         "#).bind(self.affiliation_id)
            .fetch_one(&mut *transaction)
            .await?;
+        Ok(del)
+    }
+
+    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::TransactItem, Self::TransactItem), Error> {
         // language=SQL
-        let update: Affiliations = sqlx::query_as::<_, Self>(r#"
+        let old = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM affiliations WHERE affiliation_id = $1
+        "#).bind(self.affiliation_id)
+            .fetch_one(&mut *transaction)
+            .await?;
+        // language=SQL
+        let update = sqlx::query_as::<_, Self>(r#"
             UPDATE affiliations
-            SET name = $1, update_signatures = $2
+              SET name = $1, update_signatures = $2
             WHERE affiliation_id = $3
             RETURNING *
         "#).bind(&self.name)
@@ -167,33 +176,22 @@ impl Transactable<Affiliations> for Affiliations {
         Ok((old, update))
     }
 
-    async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
-        // fixme: It is not a fully parallel process, so I should use tokio::join! (まぁ面(以下略 )
+    async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, Error> {
         // language=SQL
         let primary = sqlx::query(r#"
             SELECT EXISTS(SELECT 1 FROM affiliations WHERE name LIKE '$1')
         "#).bind(&self.name)
            .fetch_one(&mut *transaction)
            .await?
-           .get::<bool, _>(0);
+           .try_get::<bool, _>(0)?;
         // language=SQL
         let secondary = sqlx::query(r#"
             SELECT EXISTS(SELECT 1 FROM affiliations WHERE affiliation_id = $1)
         "#).bind(self.affiliation_id)
            .fetch_one(&mut *transaction)
            .await?
-           .get::<bool, _>(0);
+           .try_get::<bool, _>(0)?;
 
         Ok(primary || secondary)
-    }
-
-    async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, sqlx::Error> {
-        // language=SQL
-        let del = sqlx::query_as::<_, AffiliationId>(r#"
-            DELETE FROM affiliations WHERE affiliation_id = $1 RETURNING affiliation_id
-        "#).bind(self.affiliation_id)
-           .fetch_one(&mut *transaction)
-           .await?;
-        Ok(del.0)
     }
 }
