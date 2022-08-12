@@ -1,6 +1,7 @@
 pub mod salmon;
 pub mod meilisearch;
 mod axum;
+mod layer;
 
 #[allow(unused_must_use)]
 pub async fn server_run(pool: sqlx::PgPool) {
