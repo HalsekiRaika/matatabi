@@ -1,7 +1,6 @@
-use std::collections::VecDeque;
+use std::collections::vec_deque::VecDeque;
 use std::fmt::Display;
 use std::net::ToSocketAddrs;
-use serde::Serialize;
 use chrono::{DateTime, Local, TimeZone};
 use futures::StreamExt;
 
@@ -9,7 +8,6 @@ use sqlx::Postgres;
 use tokio::time::Instant;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status, Streaming};
-use yansi::Paint;
 use proto::salmon_api_server::{SalmonApiServer, SalmonApi};
 use proto::{Affiliation, Channel, Liver, Live, TaskResult};
 
@@ -18,7 +16,7 @@ use crate::database::models::affiliation_object::Affiliations;
 use crate::database::models::channel_object::{Channels, ChannelsBuilder};
 use crate::database::models::id_object::{ChannelId, LiverId, VideoId};
 use crate::database::models::livers_object::Livers;
-use crate::database::models::upcoming_object::{Lives, LivesBuilder};
+use crate::database::models::upcoming_object::{Lives, InitLives};
 use crate::database::models::update_signature::{LatestEq, Signed, UpdateSignature, Version};
 
 #[allow(clippy::module_inception)]
@@ -133,7 +131,7 @@ impl From<Channel> for Channels {
 impl From<Live> for Lives {
     fn from(data: Live) -> Self {
         let cloned = data.video_id.clone();
-        LivesBuilder {
+        InitLives {
             video_id: VideoId(data.video_id),
             channel_id: data.channel_id.map(ChannelId),
             title: data.title,
@@ -143,7 +141,7 @@ impl From<Live> for Lives {
             will_start_at: data.will_start_at.map(|stamp| Local.timestamp(stamp.seconds, stamp.nanos as u32)),
             started_at: data.started_at.map(|stamp| Local.timestamp(stamp.seconds, stamp.nanos as u32)),
             thumbnail_url: format!("https://img.youtube.com/vi/{}/maxresdefault.jpg", cloned),
-            update_signature: UpdateSignature(data.override_at),
+            update_signatures: UpdateSignature(data.override_at),
             ..Default::default()
         }.build()
     }

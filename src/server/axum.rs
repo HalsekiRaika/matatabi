@@ -9,6 +9,7 @@ pub async fn run_webapi_server(connection_instance: Pool<Postgres>) {
         .route("/", get(routing::version))
         .route("/affiliations", get(routing::affiliation::get_affiliations))
         .route("/affiliations/:id", get(routing::affiliation::get_affiliation_from_id))
+        .route("/upcomings", get(routing::upcoming::get_upcomings))
         .layer(axum::Extension(connection_instance));
 
     let bind_address = SocketAddr::from(([127, 0, 0, 1], 3000));

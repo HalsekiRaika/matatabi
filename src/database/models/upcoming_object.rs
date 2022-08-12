@@ -22,6 +22,18 @@ pub struct Lives {
     update_signatures: UpdateSignature
 }
 
+impl Lives {
+    pub async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
+      where E: sqlx::Executor<'a, Database = Postgres> + Copy {
+        // language=SQL
+        let all = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM lives
+        "#).fetch_all(transaction)
+           .await?;
+        Ok(all)
+    }
+}
+
 impl Display for Lives {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "live(video) >> {}, title: {}", self.video_id, self.title)
@@ -142,7 +154,7 @@ impl Transact for Lives {
     }
 }
 
-pub struct LivesBuilder {
+pub struct InitLives {
     pub video_id: VideoId,
     pub channel_id: Option<ChannelId>,
     pub title: String,
@@ -152,12 +164,12 @@ pub struct LivesBuilder {
     pub will_start_at: Option<DateTime<Local>>,
     pub started_at: Option<DateTime<Local>>,
     pub thumbnail_url: String,
-    pub update_signature: UpdateSignature,
+    pub update_signatures: UpdateSignature,
     #[doc(hidden)]
     pub init: ()
 }
 
-impl Default for LivesBuilder {
+impl Default for InitLives {
     fn default() -> Self {
         Self {
             video_id: VideoId("none".to_string()),
@@ -169,13 +181,13 @@ impl Default for LivesBuilder {
             will_start_at: None,
             started_at: None,
             thumbnail_url: "none".to_string(),
-            update_signature: UpdateSignature::default(),
+            update_signatures: UpdateSignature::default(),
             init: ()
         }
     }
 }
 
-impl LivesBuilder {
+impl InitLives {
     pub fn build(self) -> Lives {
         Lives {
             video_id: self.video_id,
@@ -187,7 +199,25 @@ impl LivesBuilder {
             will_start_at: self.will_start_at,
             started_at: self.started_at,
             thumbnail_url: self.thumbnail_url,
-            update_signatures: self.update_signature
+            update_signatures: self.update_signatures
+        }
+    }
+}
+
+impl Lives {
+    pub fn decompose(self) -> InitLives {
+        InitLives {
+            video_id: self.video_id,
+            channel_id: self.channel_id,
+            title: self.title,
+            description: self.description,
+            published_at: self.published_at,
+            updated_at: self.updated_at,
+            will_start_at: self.will_start_at,
+            started_at: self.started_at,
+            thumbnail_url: self.thumbnail_url,
+            update_signatures: self.update_signatures,
+            init: ()
         }
     }
 }
