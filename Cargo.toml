@@ -1,7 +1,7 @@
 [package]
 name = "matatabi"
 version = "0.0.31-bleeding-edge"
-edition = "2018"
+edition = "2021"
 build = "build.rs"
 license = "AGPL-3.0-or-later"
 authors = ["ReiRokusanami <reirokusanami.rdh@gmail.com>"]
@@ -16,30 +16,28 @@ serde = "1.0.130"
 serde_json = "1.0.68"
 serde_derive = "1.0.130"
 
-juniper = "0.15.7"
-
-tonic = { version = "0.7.2", features = ["tls", "compression"] }
-prost = "0.10.3"
-prost-types = "0.10.1"
+tonic = { version = "0.8", features = ["tls"] }
+prost = "0.11"
+prost-types = "0.11"
 futures = "0.3.18"
 tokio = { version = "1.14.0", features = ["full"] }
 tokio-test = "0.4.2"
 
 meilisearch-sdk = "0.17.0"
-reqwest = { version = "0.11.6", features = ["json"] }
 openssl = "0.10"
 
-sqlx = { version = "0.5.9", features = ["runtime-tokio-native-tls", "postgres", "chrono", "offline", "macros", "migrate"] }
+sqlx = { version = "0.6.1", features = ["runtime-tokio-native-tls", "postgres", "chrono"] }
 
 anyhow = "1.0.57"
 thiserror = "1.0.31"
-tracing = "0.1.34"
-tracing-subscriber = { version = "0.3.11", features = ["env-filter"] }
-env_logger = "0.9.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["registry", "fmt", "env-filter"] }
+tracing-appender = "0.2"
+
 dotenv = "0.15.0"
 yansi = "0.5.0"
 async-trait = "0.1.51"
 chrono = { version = "0.4.19", features = ["serde"] }
 
 [build-dependencies]
-tonic-build = { version = "0.7.2", features = ["prost", "compression"] }
+tonic-build = { version = "0.8", features = ["prost"] }
