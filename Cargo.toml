@@ -11,10 +11,6 @@ authors = ["ReiRokusanami <reirokusanami.rdh@gmail.com>"]
 [dependencies]
 axum = "0.5.6"
 jsonwebtoken = "8.1.0"
-# Todo: Replace Axum
-actix-web = "4.0.0-beta.13"
-actix-cors = "0.6.0-beta.4"
-actix-ratelimit = "0.3.1"
 
 serde = "1.0.130"
 serde_json = "1.0.68"
