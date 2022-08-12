@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use sqlx::{Type, FromRow, Postgres, Transaction};
 use serde::{Serialize, Deserialize};
 use chrono::Utc;
