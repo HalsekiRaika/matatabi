@@ -9,29 +9,29 @@ pub mod channel_object;
 ///
 /// Use the SQL statement "Returning *" to use the value of the result after the SQL is executed for the return value
 #[async_trait::async_trait]
-pub trait Transact {
-    type TransactItem;
+pub trait Accessor {
+    type Item;
 
     /// Consume the value and insert it into the database.
     ///
     /// [Ok()]: `T` - Value returned by SQL statement "Returning *".
     ///
     /// [Err()] - Error in sqlx.
-    async fn insert(self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<Self::TransactItem, sqlx::Error>;
+    async fn insert(self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<Self::Item, sqlx::Error>;
 
     /// Consumes a value and deletes the corresponding data from the database.
     ///
     /// [Ok()]: `T` - Value returned by SQL statement "Returning *".
     ///
     /// [Err()] - Error in sqlx.
-    async fn delete(self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<Self::TransactItem, sqlx::Error>;
+    async fn delete(self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<Self::Item, sqlx::Error>;
 
     /// Consumes a value and updates the value in the database.
     ///
     /// [Ok()] `(T, T)` - Return tuple (old, new). Value returned by SQL statement "Returning *".
     ///
     /// [Err()] - Error in sqlx.
-    async fn update(self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<(Self::TransactItem, Self::TransactItem), sqlx::Error>;
+    async fn update(self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<(Self::Item, Self::Item), sqlx::Error>;
 
     /// Verify that the corresponding data exists in the database.
     ///

@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use chrono::{DateTime, Local};
 use sqlx::{Row, Postgres, Transaction, Error};
 
-use super::Transact;
+use super::Accessor;
 use super::id_object::{ChannelId, LiverId};
 use super::update_signature::{UpdateSignature, Version, Signed, LatestEq};
 
@@ -85,10 +85,10 @@ impl LatestEq for Channels {
 }
 
 #[async_trait::async_trait]
-impl Transact for Channels {
-    type TransactItem = Self;
+impl Accessor for Channels {
+    type Item = Self;
 
-    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, Error> {
+    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
         let ins = sqlx::query_as::<_, Self>(r#"
             INSERT INTO channels (channel_id, liver_id, logo_url, published_at, description, update_signatures)
@@ -105,7 +105,7 @@ impl Transact for Channels {
         Ok(ins)
     }
 
-    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, Error> {
+    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
         let del = sqlx::query_as::<_, Self>(r#"
             DELETE FROM channels WHERE channel_id LIKE $1 RETURNING *
@@ -115,7 +115,7 @@ impl Transact for Channels {
         Ok(del)
     }
 
-    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::TransactItem, Self::TransactItem), Error> {
+    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::Item, Self::Item), Error> {
         // language=SQL
         let old = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM channels WHERE channel_id LIKE $1

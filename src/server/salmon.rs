@@ -11,7 +11,7 @@ use tonic::{Request, Response, Status, Streaming};
 use proto::salmon_api_server::{SalmonApiServer, SalmonApi};
 use proto::{Affiliation, Channel, Liver, Live, TaskResult};
 
-use crate::database::models::Transact;
+use crate::database::models::Accessor;
 use crate::database::models::affiliation_object::Affiliations;
 use crate::database::models::channel_object::{Channels, ChannelsBuilder};
 use crate::database::models::id_object::{ChannelId, LiverId, VideoId};
@@ -56,7 +56,7 @@ impl SalmonApi for SalmonAutoCollector {
 
 impl SalmonAutoCollector {
     pub async fn collect<R, T>(&self, receive: Request<Streaming<R>>) -> SalmonResult<TaskResult>
-        where T: From<R> + Display + Transact<TransactItem = T> + Version + LatestEq<ComparisonItem = T> + Signed
+        where T: From<R> + Display + Accessor<Item = T> + Version + LatestEq<ComparisonItem = T> + Signed
     {
         const ZERO_VER: UpdateSignature = UpdateSignature(0);
         let dur_now = Instant::now();

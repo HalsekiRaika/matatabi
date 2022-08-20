@@ -3,7 +3,7 @@
 use std::fmt::{Display, Formatter};
 use sqlx::{Error, Postgres, Row, Transaction};
 
-use super::Transact;
+use super::Accessor;
 use super::id_object::{AffiliationId, LiverId};
 use super::update_signature::{UpdateSignature, LatestEq, Signed, Version};
 
@@ -131,10 +131,10 @@ impl LatestEq for Livers {
 }
 
 #[async_trait::async_trait]
-impl Transact for Livers {
-    type TransactItem = Self;
+impl Accessor for Livers {
+    type Item = Self;
 
-    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, Error> {
+    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
         let ins: Livers = sqlx::query_as::<_, Self>(r#"
             INSERT INTO livers (liver_id, affiliation_id, name, localized_name, update_signatures)
@@ -150,7 +150,7 @@ impl Transact for Livers {
         Ok(ins)
     }
 
-    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, Error> {
+    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
         let del = sqlx::query_as::<_, Self>(r#"
             DELETE FROM livers WHERE liver_id = $1 RETURNING *
@@ -160,7 +160,7 @@ impl Transact for Livers {
         Ok(del)
     }
 
-    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::TransactItem, Self::TransactItem), Error> {
+    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::Item, Self::Item), Error> {
         // language=SQL
         let old: Livers = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM livers WHERE liver_id = $1
