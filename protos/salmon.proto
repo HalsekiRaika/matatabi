@@ -35,8 +35,9 @@ message Channel {
 message Liver {
     sint64 LiverId = 1;
     string Name = 2;
-    optional sint64 AffiliationId = 3;
-    sint64 override_at = 4;
+    string LocalizedName = 3;
+    optional sint64 AffiliationId = 4;
+    sint64 override_at = 5;
 }
 
 message Affiliation {

@@ -108,7 +108,7 @@ impl From<Affiliation> for Affiliations {
 
 impl From<Liver> for Livers {
     fn from(data: Liver) -> Self {
-        Livers::new(data.liver_id, data.affiliation_id, data.name, data.override_at)
+        Livers::new(data.liver_id, data.affiliation_id, data.name, data.localized_name, data.override_at)
     }
 }
 

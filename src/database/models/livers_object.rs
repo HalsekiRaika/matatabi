@@ -12,6 +12,7 @@ pub struct Livers {
     liver_id: LiverId,
     affiliation_id: Option<AffiliationId>,
     name: String,
+    localized_name: String,
     update_signatures: UpdateSignature
 }
 
@@ -26,6 +27,7 @@ struct RawLivers {
     liver_id: Option<i64>,
     affiliation_id: Option<i64>,
     name: Option<String>,
+    localized_name: Option<String>,
     update_signatures: Option<i64>
 }
 
@@ -34,26 +36,29 @@ impl From<RawLivers> for Livers {
         let id = if let Some(id) = raw.liver_id { id } else { 0 };
         let aff = raw.affiliation_id;
         let name = if let Some(name) = raw.name { name } else { "none".to_string() };
+        let localized = if let Some(localized) = raw.localized_name { localized } else { "none".to_string() };
         let sign = if let Some(sign) = raw.update_signatures { sign } else { 0 };
-        Livers::new(id, aff, name, sign)
+        Livers::new(id, aff, name, localized, sign)
     }
 }
 
 impl Livers {
     pub fn new(
         liver_id: i64, affiliation_id: Option<i64>,
-        name: impl Into<String>, update_signature: i64
+        name: impl Into<String>, localized_name: impl Into<String>, update_signature: i64
     ) -> Self {
         let aff = affiliation_id.map(AffiliationId);
         Self {
             liver_id: LiverId(liver_id), affiliation_id: aff,
-            name: name.into(), update_signatures: UpdateSignature(update_signature)
+            name: name.into(), localized_name: localized_name.into(), update_signatures: UpdateSignature(update_signature)
         }
     }
 
     pub fn as_ref_name(&self) -> &str {
         &self.name
     }
+
+    pub fn localized_name(&self) -> &str { &self.localized_name }
 
     pub fn liver_id(&self) -> LiverId {
         self.liver_id
@@ -73,6 +78,17 @@ impl Livers {
         "#).fetch_all(transaction)
            .await?;
         Ok(all)
+    }
+
+    pub async fn fetch_filtered_affiliation<'a, E>(id: i64, transaction: E) -> Result<Vec<Self>, sqlx::Error>
+        where E: sqlx::Executor<'a, Database = Postgres> + Copy {
+        // language=SQL
+        let filtered = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM livers WHERE affiliation_id = $1
+        "#).bind(id)
+           .fetch_all(transaction)
+           .await?;
+        Ok(filtered)
     }
 }
 
@@ -121,12 +137,13 @@ impl Transact for Livers {
     async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::TransactItem, Error> {
         // language=SQL
         let ins: Livers = sqlx::query_as::<_, Self>(r#"
-            INSERT INTO livers (liver_id, affiliation_id, name, update_signatures)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO livers (liver_id, affiliation_id, name, localized_name, update_signatures)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING *
         "#).bind(self.liver_id)
            .bind(self.affiliation_id)
            .bind(&self.name)
+           .bind(&self.localized_name)
            .bind(self.update_signatures)
            .fetch_one(&mut *transaction)
            .await?;

@@ -12,6 +12,7 @@ CREATE TABLE livers (
       FOREIGN KEY (affiliation_id)
         REFERENCES affiliations(affiliation_id),
     name VARCHAR(32) NOT NULL,
+    localized_name VARCHAR(32) NOT NULL,
     update_signatures BIGSERIAL NOT NULL
 );
 
