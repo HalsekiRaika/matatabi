@@ -19,7 +19,7 @@ use crate::database::models::livers_object::Livers;
 use crate::database::models::upcoming_object::{Lives, InitLives};
 use crate::database::models::update_signature::{LatestEq, Signed, UpdateSignature, Version};
 
-#[allow(clippy::module_inception)]
+#[allow(clippy::all)]
 mod proto { tonic::include_proto!("salmon"); }
 
 #[derive(Debug)]
