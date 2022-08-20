@@ -28,8 +28,8 @@ openssl = "0.10"
 
 sqlx = { version = "0.6.1", features = ["runtime-tokio-native-tls", "postgres", "chrono"] }
 
-anyhow = "1.0.57"
-thiserror = "1.0.31"
+anyhow = "1.0"
+thiserror = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "fmt", "env-filter"] }
 tracing-appender = "0.2"
