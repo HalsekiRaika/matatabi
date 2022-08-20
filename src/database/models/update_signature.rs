@@ -1,3 +1,4 @@
+#![deprecated]
 #![allow(dead_code)]
 
 use sqlx::{Type, FromRow, Postgres, Transaction};
