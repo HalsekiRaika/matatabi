@@ -84,10 +84,7 @@ impl Accessor for VideoObject {
             .await?;
         // language=SQL
         let new = sqlx::query_as::<_, Self>(r#"
-            UPDATE videos
-            SET title = $1, description = $2, updated_at = $3,
-                will_start_at = $4, started_at = $5
-            WHERE video_id LIKE $6
+            UPDATE videos SET title = $1, description = $2, updated_at = $3, will_start_at = $4, started_at = $5 WHERE video_id LIKE $6
             RETURNING *
         "#).bind(&self.title)
            .bind(&self.description)
@@ -103,7 +100,7 @@ impl Accessor for VideoObject {
     async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
         // language=SQL
         let video_exists = sqlx::query(r#"
-            SELECT EXISTS(SELECT 1 FROM lives WHERE video_id LIKE $1)
+            SELECT EXISTS(SELECT 1 FROM videos WHERE video_id LIKE $1)
         "#).bind(&self.video_id)
             .fetch_one(&mut *transaction)
             .await?
