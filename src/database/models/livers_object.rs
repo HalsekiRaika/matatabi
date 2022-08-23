@@ -13,7 +13,6 @@ pub struct Livers {
     affiliation_id: Option<AffiliationId>,
     name: String,
     localized_name: String,
-    update_signatures: UpdateSignature
 }
 
 impl Display for Livers {

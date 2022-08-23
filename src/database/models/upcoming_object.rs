@@ -18,8 +18,7 @@ pub struct Lives {
     updated_at: Option<DateTime<Local>>,
     will_start_at: Option<DateTime<Local>>,
     started_at: Option<DateTime<Local>>,
-    thumbnail_url: String,
-    update_signatures: UpdateSignature
+    thumbnail_url: String
 }
 
 impl Lives {

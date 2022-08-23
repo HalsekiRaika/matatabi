@@ -14,8 +14,7 @@ pub struct Channels {
     liver_id: Option<LiverId>,
     logo_url: String,
     published_at: DateTime<Local>,
-    description: String,
-    update_signatures: UpdateSignature
+    description: String
 }
 
 impl Display for Channels {

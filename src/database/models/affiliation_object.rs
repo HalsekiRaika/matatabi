@@ -12,7 +12,6 @@ use super::update_signature::{UpdateSignature, Version, Signed, LatestEq};
 pub struct Affiliations {
     affiliation_id: AffiliationId,
     name: String,
-    update_signatures: UpdateSignature
 }
 
 impl Display for Affiliations {
