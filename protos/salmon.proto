@@ -11,7 +11,7 @@ service SalmonApi {
     rpc insertReqAffiliation(stream Affiliation) returns (TaskResult);
 }
 
-message Live {
+message Video {
     string VideoId = 1;
     optional string ChannelId = 2;
     string Title = 3;
