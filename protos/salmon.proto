@@ -5,10 +5,10 @@ package salmon;
 import "google/protobuf/timestamp.proto";
 
 service SalmonApi {
-    rpc insertReqLive(stream Live) returns (TaskResult);
-    rpc insertReqChannel(stream Channel) returns (TaskResult);
-    rpc insertReqVTuber(stream Liver) returns (TaskResult);
-    rpc insertReqAffiliation(stream Affiliation) returns (TaskResult);
+    rpc InsertVideo(stream Video) returns (TaskResult);
+    rpc InsertChannel(stream Channel) returns (TaskResult);
+    rpc InsertLiver(stream Liver) returns (TaskResult);
+    rpc InsertAffiliation(stream Affiliation) returns (TaskResult);
 }
 
 message Video {
