@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
-use crate::database::models::affiliation_object::Affiliations as FromDatabaseAffiliation;
-use crate::database::models::id_object::AffiliationId as FromDatabaseAffiliationId;
+use crate::database::models::affiliation_object::AffiliationObject;
+use crate::database::models::id_object::AffiliationId;
 
 use super::NumId;
 
@@ -10,17 +10,17 @@ pub struct Affiliation {
     pub name: String
 }
 
-impl From<FromDatabaseAffiliationId> for NumId<Affiliation> {
-    fn from(database: FromDatabaseAffiliationId) -> Self {
-        NumId::new(database.0)
+impl From<AffiliationId> for NumId<Affiliation> {
+    fn from(db_id: AffiliationId) -> Self {
+        NumId::new(db_id)
     }
 }
 
-impl From<FromDatabaseAffiliation> for Affiliation {
-    fn from(database_obj: FromDatabaseAffiliation) -> Self {
+impl From<AffiliationObject> for Affiliation {
+    fn from(obj: AffiliationObject) -> Self {
         Self {
-            affiliation_id: NumId::from(database_obj.get_affiliation_id()),
-            name: database_obj.get_name().to_string()
+            affiliation_id: NumId::from(obj.affiliation_id()),
+            name: obj.name().to_owned()
         }
     }
 }

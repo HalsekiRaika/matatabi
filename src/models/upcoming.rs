@@ -1,17 +1,15 @@
 use chrono::{DateTime, Local};
 use serde::{Serialize, Deserialize};
-use crate::database::models::upcoming_object::Lives as FromDatabaseLive;
-use crate::database::models::id_object::VideoId as FromDatabaseLiveId;
+use crate::database::models::id_object::VideoId;
+use crate::database::models::upcoming_object::VideoObject;
 
 use super::StringId;
 use super::channel::Channel;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct VideoId(pub String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Live {
-    pub video_id: StringId<Live>,
+pub struct Video {
+    pub video_id: StringId<Video>,
     pub channel_id: Option<StringId<Channel>>,
     pub title: String,
     pub description: String,
@@ -22,14 +20,14 @@ pub struct Live {
     pub thumbnail_url: String
 }
 
-impl From<FromDatabaseLiveId> for StringId<Live> {
-    fn from(database: FromDatabaseLiveId) -> Self {
-        StringId::new(database.0)
+impl From<VideoId> for StringId<Video> {
+    fn from(db_id: VideoId) -> Self {
+        StringId::new(db_id)
     }
 }
 
-impl From<FromDatabaseLive> for Live {
-    fn from(database: FromDatabaseLive) -> Self {
+impl From<VideoObject> for Video {
+    fn from(database: VideoObject) -> Self {
         let pubs = database.decompose();
         Self {
             video_id: StringId::from(pubs.video_id.clone()),

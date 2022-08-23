@@ -12,12 +12,11 @@ use proto::salmon_api_server::{SalmonApiServer, SalmonApi};
 use proto::{Affiliation, Channel, Liver, Live, TaskResult};
 
 use crate::database::models::Accessor;
-use crate::database::models::affiliation_object::Affiliations;
-use crate::database::models::channel_object::{Channels, ChannelsBuilder};
+use crate::database::models::affiliation_object::AffiliationObject;
+use crate::database::models::livers_object::LiverObject;
+use crate::database::models::channel_object::{ChannelObject, ChannelObjectBuilder};
+use crate::database::models::upcoming_object::{VideoObject, InitVideoObject};
 use crate::database::models::id_object::{ChannelId, LiverId, VideoId};
-use crate::database::models::livers_object::Livers;
-use crate::database::models::upcoming_object::{Lives, InitLives};
-use crate::database::models::update_signature::{LatestEq, Signed, UpdateSignature, Version};
 
 #[allow(clippy::all)]
 mod proto { tonic::include_proto!("salmon"); }
@@ -38,33 +37,33 @@ type SalmonResult<T> = Result<Response<T>, Status>;
 #[tonic::async_trait]
 impl SalmonApi for SalmonAutoCollector {
     async fn insert_req_live(&self, req: Request<Streaming<Live>>) -> SalmonResult<TaskResult> {
-        self.collect::<Live, Lives>(req).await
+        self.collect::<Live, VideoObject>(req).await
     }
 
     async fn insert_req_channel(&self, req: Request<Streaming<Channel>>) -> SalmonResult<TaskResult> {
-        self.collect::<Channel, Channels>(req).await
+        self.collect::<Channel, ChannelObject>(req).await
     }
 
     async fn insert_req_v_tuber(&self, req: Request<Streaming<Liver>>) -> SalmonResult<TaskResult> {
-        self.collect::<Liver, Livers>(req).await
+        self.collect::<Liver, LiverObject>(req).await
     }
 
     async fn insert_req_affiliation(&self, req: Request<Streaming<Affiliation>>) -> SalmonResult<TaskResult> {
-        self.collect::<Affiliation, Affiliations>(req).await
+        self.collect::<Affiliation, AffiliationObject>(req).await
     }
 }
 
 impl SalmonAutoCollector {
     pub async fn collect<R, T>(&self, receive: Request<Streaming<R>>) -> SalmonResult<TaskResult>
-        where T: From<R> + Display + Accessor<Item = T> + Version + LatestEq<ComparisonItem = T> + Signed
+        where T: From<R> + Display + Accessor<Item = T>,
+              R: DeleteFlag
     {
-        const ZERO_VER: UpdateSignature = UpdateSignature(0);
         let dur_now = Instant::now();
         let collector_item = receive.into_inner()
-            .map(Result::unwrap)
-            .map(T::from)
-            .inspect(|transact_item| tracing::debug!("{:<10} {}", yansi::Paint::green("receive"), transact_item))
-            .collect::<VecDeque<T>>()
+            .map(Result::unwrap)    
+            .map(|rec| (rec.flagged(), T::from(rec)))
+            .inspect(|(_, transact_item)| tracing::debug!("{:<10} {}", yansi::Paint::green("receive"), transact_item))
+            .collect::<VecDeque<(bool, T)>>()
             .await;
         tracing::info!("received data: {}ms", dur_now.elapsed().as_millis());
 
@@ -73,23 +72,7 @@ impl SalmonAutoCollector {
             .map_err(|e| Status::failed_precondition(format!("Failed to begin build transaction: {:?}", e)))?;
 
         for item in collector_item {
-            if !item.exists(&mut transaction).await
-                .map_err(|e| Status::internal(format!("insert: {:?}", e)))? {
-                let ins = item.apply(UpdateSignature::default()).insert(&mut transaction).await
-                    .map_err(|e| Status::internal(format!("{:?}", e)))?;
-                tracing::debug!("{:<10} {}", yansi::Paint::cyan("insert"), ins);
-            } else if !item.irregular_sign() && item.version_compare(item.sign(&mut transaction).await
-                .map_err(|e| Status::internal(format!("version_compare: {:?}", e)))?) {
-                let upd = item.update(&mut transaction).await
-                    .map_err(|e| Status::internal(format!("update: {:?}", e)))?;
-                tracing::debug!("{:<10} old: {}", yansi::Paint::yellow("update"), upd.0);
-                tracing::debug!("{:<10} new: {}", yansi::Paint::yellow("update"), upd.1);
-            } else if item.version() < ZERO_VER && item.exists(&mut transaction).await
-                .map_err(|e| Status::internal(format!("delete: {:?}", e)))? {
-                let del = item.delete(&mut transaction).await
-                    .map_err(|e| Status::internal(format!("{:?}", e)))?;
-                tracing::debug!("{:<10} {}", yansi::Paint::magenta("delete"), del)
-            }
+            // Todo: implement new logic
         }
 
         transaction.commit().await
@@ -100,40 +83,39 @@ impl SalmonAutoCollector {
     }
 }
 
-impl From<Affiliation> for Affiliations {
-    fn from(data: Affiliation) -> Affiliations {
-        Affiliations::new(data.affiliation_id, data.name, data.override_at)
+impl From<Affiliation> for AffiliationObject {
+    fn from(data: Affiliation) -> Self {
+        AffiliationObject::new(data.affiliation_id, data.name)
     }
 }
 
-impl From<Liver> for Livers {
+impl From<Liver> for LiverObject {
     fn from(data: Liver) -> Self {
-        Livers::new(data.liver_id, data.affiliation_id, data.name, data.localized_name, data.override_at)
+        LiverObject::new(data.liver_id, data.affiliation_id, data.name, data.localized_name)
     }
 }
 
-impl From<Channel> for Channels {
+impl From<Channel> for ChannelObject {
     fn from(data: Channel) -> Self {
         let timestamp = if let Some(stamp) = data.published_at { (stamp.seconds, stamp.nanos as u32) } else { (0, 0) };
         let date: DateTime<Local> = Local.timestamp(timestamp.0, timestamp.1);
-        ChannelsBuilder {
-            channel_id: ChannelId(data.channel_id),
-            liver_id: data.liver_id.map(LiverId),
+        ChannelObjectBuilder {
+            channel_id: ChannelId::new(data.channel_id),
+            liver_id: data.liver_id.map(LiverId::new),
             logo_url: data.logo_url,
             published_at: date,
             description: data.description,
-            update_signatures: UpdateSignature(data.override_at),
             ..Default::default()
         }.build()
     }
 }
 
-impl From<Live> for Lives {
+impl From<Live> for VideoObject {
     fn from(data: Live) -> Self {
         let cloned = data.video_id.clone();
-        InitLives {
-            video_id: VideoId(data.video_id),
-            channel_id: data.channel_id.map(ChannelId),
+        InitVideoObject {
+            video_id: VideoId::new(data.video_id.clone()),
+            channel_id: data.channel_id.map(ChannelId::new),
             title: data.title,
             description: data.description,
             published_at: data.published_at.map(|stamp| Local.timestamp(stamp.seconds, stamp.nanos as u32)),
@@ -141,9 +123,36 @@ impl From<Live> for Lives {
             will_start_at: data.will_start_at.map(|stamp| Local.timestamp(stamp.seconds, stamp.nanos as u32)),
             started_at: data.started_at.map(|stamp| Local.timestamp(stamp.seconds, stamp.nanos as u32)),
             thumbnail_url: format!("https://img.youtube.com/vi/{}/maxresdefault.jpg", cloned),
-            update_signatures: UpdateSignature(data.override_at),
             ..Default::default()
         }.build()
+    }
+}
+
+pub trait DeleteFlag {
+    fn flagged(&self) -> bool;
+}
+
+impl DeleteFlag for Affiliation {
+    fn flagged(&self) -> bool {
+        self.delete
+    }
+}
+
+impl DeleteFlag for Liver {
+    fn flagged(&self) -> bool {
+        self.delete
+    }
+}
+
+impl DeleteFlag for Channel {
+    fn flagged(&self) -> bool {
+        self.delete
+    }
+}
+
+impl DeleteFlag for Live {
+    fn flagged(&self) -> bool {
+        self.delete
     }
 }
 

@@ -3,7 +3,7 @@ use axum::extract::Path;
 use axum::http::StatusCode;
 use sqlx::PgPool;
 use crate::models::affiliation::Affiliation;
-use crate::database::models::affiliation_object::Affiliations as AffiliationObject;
+use crate::database::models::affiliation_object::AffiliationObject;
 
 use super::ApiError;
 use super::ErrorResponse;

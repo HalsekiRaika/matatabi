@@ -20,7 +20,7 @@ message Live {
     optional google.protobuf.Timestamp UpdatedAt = 7;
     optional google.protobuf.Timestamp WillStartAt = 8; // status in upcoming
     optional google.protobuf.Timestamp StartedAt = 9; // status in live
-    sint64 override_at = 10;
+    bool delete = 10;
 }
 
 message Channel {
@@ -29,7 +29,7 @@ message Channel {
     string LogoUrl = 3;
     google.protobuf.Timestamp PublishedAt = 4;
     string Description = 5;
-    sint64 override_at = 6;
+    bool delete = 6;
 }
 
 message Liver {
@@ -37,13 +37,13 @@ message Liver {
     string Name = 2;
     string LocalizedName = 3;
     optional sint64 AffiliationId = 4;
-    sint64 override_at = 5;
+    bool delete = 5;
 }
 
 message Affiliation {
     sint64 AffiliationId = 1;
     string Name = 2;
-    sint64 override_at = 3;
+    bool delete = 3;
 }
 
 

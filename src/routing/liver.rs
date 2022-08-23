@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 use axum::{Extension, Json};
-use axum::extract::{Path, Query};
+use axum::extract::Query;
 use axum::http::StatusCode;
-use serde::Deserialize;
 use sqlx::PgPool;
 use crate::models::liver::Liver;
-use crate::database::models::livers_object::Livers as LiverObject;
+use crate::database::models::livers_object::LiverObject;
 use super::{ApiError, ErrorResponse};
 
 pub async fn get_livers(
