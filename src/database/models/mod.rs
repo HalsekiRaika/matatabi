@@ -47,4 +47,19 @@ pub trait Accessor {
     ///
     /// [Err()] - Error in sqlx.
     async fn exists(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<bool, sqlx::Error>;
+
+    /// Compares its own data with the data present in the database.
+    /// The PrimaryKey is the criteria, and the data must exist beforehand.
+    ///
+    /// [Ok()]: `bool` - Returns true if the Hash of the data in the database matches its own Hash.
+    ///
+    /// [Err()] - Error in sqlx.
+    async fn compare(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<bool, sqlx::Error>;
+}
+
+pub fn hash<T: std::hash::Hash>(hash_obj: &T) -> u64 {
+    use std::hash::Hasher;
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    hash_obj.hash(&mut hasher);
+    hasher.finish()
 }

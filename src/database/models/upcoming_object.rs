@@ -112,6 +112,21 @@ impl Accessor for VideoObject {
             .try_get::<bool, _>(0)?;
         Ok(video_exists)
     }
+
+    async fn compare(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<bool, sqlx::Error> {
+        let com = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM videos WHERE video_id = $1
+        "#).bind(&self.channel_id)
+           .fetch_optional(&mut *transaction)
+           .await?;
+        
+        let com = if let Some(db) = com {
+            let db = hash(&db);
+            let my = hash(&self);
+            db == my
+        } else { false };
+        Ok(com)
+    }
 }
 
 pub struct InitLives {

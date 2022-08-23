@@ -138,4 +138,19 @@ impl Accessor for AffiliationObject {
 
         Ok(primary || secondary)
     }
+
+    async fn compare(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, Error> {
+        let com = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM affiliations WHERE affiliation_id = $1
+        "#).bind(&self.affiliation_id)
+           .fetch_optional(&mut *transaction)
+           .await?;
+        
+        let com = if let Some(db) = com {
+            let db = hash(&db);
+            let my = hash(&self);
+            db == my
+        } else { false };
+        Ok(com)
+    }
 }

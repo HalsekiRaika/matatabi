@@ -139,4 +139,20 @@ impl Accessor for LiverObject {
            .try_get::<bool, _>(0)?;
         Ok(is_name_exist || is_id_exist)
     }
+
+    async fn compare(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<bool, sqlx::Error> {
+        let com = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM livers WHERE liver_id = $1
+        "#).bind(&self.liver_id)
+           .fetch_optional(&mut *transaction)
+           .await?;
+        
+        let com = if let Some(db) = com {
+            let db = hash(&db);
+            let my = hash(&self);
+            db == my
+        } else { false };
+        Ok(com)
+    }
+
 }

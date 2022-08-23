@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use chrono::{DateTime, Local};
 use sqlx::{Row, Postgres, Transaction, Error};
 
-use super::Accessor;
+use super::{Accessor, hash};
 use super::id_object::{ChannelId, LiverId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, sqlx::FromRow)]
@@ -106,6 +106,21 @@ impl Accessor for ChannelObject {
            .try_get::<bool, _>(0)?;
 
         Ok(channel_exists)
+    }
+
+    async fn compare(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<bool, sqlx::Error> {
+        let com = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM channels WHERE channel_id LIKE $1
+        "#).bind(&self.channel_id)
+           .fetch_optional(&mut *transaction)
+           .await?;
+        
+        let com = if let Some(db) = com {
+            let db = hash(&db);
+            let my = hash(&self);
+            db == my
+        } else { false };
+        Ok(com)
     }
 }
 
