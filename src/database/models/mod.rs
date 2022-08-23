@@ -2,7 +2,6 @@ pub mod id_object;
 pub mod affiliation_object;
 pub mod livers_object;
 pub mod upcoming_object;
-pub mod update_signature;
 pub mod channel_object;
 
 /// Trait used to mediate basic SQL Transactions.
