@@ -57,6 +57,12 @@ pub trait Accessor {
     async fn compare(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<bool, sqlx::Error>;
 }
 
+#[async_trait::async_trait]
+pub trait Fetch {
+    type Item;
+    async fn fetch_all(transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<Vec<Self::Item>, sqlx::Error>;
+}
+
 pub fn hash<T: std::hash::Hash>(hash_obj: &T) -> u64 {
     use std::hash::Hasher;
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
