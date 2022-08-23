@@ -27,8 +27,8 @@ impl ChannelObject {
         self.published_at
     }
 
-    pub fn breach_channel_id(&self) -> ChannelId {
-        self.channel_id.clone()
+    pub fn channel_id(&self) -> &ChannelId {
+        &self.channel_id
     }
 
     pub fn liver_id(&self) -> Option<LiverId> {
@@ -83,7 +83,7 @@ impl Accessor for ChannelObject {
            .await?;
         // language=SQL
         let new = sqlx::query_as::<_, Self>(r#"
-            UPDATE channels SET description = $1, WHERE channel_id LIKE $2
+            UPDATE channels SET description = $1 WHERE channel_id LIKE $2
             RETURNING *
         "#).bind(&self.description)
            .bind(&self.channel_id)

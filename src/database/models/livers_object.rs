@@ -32,7 +32,7 @@ impl LiverObject {
         }
     }
 
-    pub fn as_ref_name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
