@@ -6,7 +6,6 @@ use sqlx::postgres::Postgres;
 
 use super::Accessor;
 use super::id_object::AffiliationId;
-use super::update_signature::{UpdateSignature, Version, Signed, LatestEq};
 
 #[derive(Debug, Clone, PartialEq, Eq, FromRow)]
 pub struct Affiliations {
@@ -72,44 +71,6 @@ impl Affiliations {
         "#).fetch_all(transaction)
            .await?;
         Ok(all)
-    }
-}
-
-impl Version for Affiliations {
-    fn version(&self) -> UpdateSignature {
-        self.update_signatures
-    }
-}
-
-#[async_trait::async_trait]
-impl Signed for Affiliations {
-    async fn sign(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<UpdateSignature, Error> {
-        // language=SQL
-        let current = sqlx::query(r#"
-            SELECT update_signatures FROM affiliations WHERE affiliation_id = $1
-        "#).bind(self.affiliation_id)
-            .fetch_one(&mut *transaction)
-            .await?
-            .try_get::<UpdateSignature, _>(0)?;
-        Ok(current)
-    }
-}
-
-impl LatestEq for Affiliations {
-    type ComparisonItem = Self;
-
-    fn apply(self, sign: UpdateSignature) -> Self::ComparisonItem {
-        let mut a = self;
-        a.update_signatures = sign;
-        a
-    }
-
-    fn version_compare(&self, compare: UpdateSignature) -> bool {
-        self.update_signatures.0 > compare.0
-    }
-
-    fn irregular_sign(&self) -> bool {
-        self.update_signatures.0 <= 1
     }
 }
 

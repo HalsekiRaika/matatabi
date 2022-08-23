@@ -6,7 +6,6 @@ use sqlx::{Row, Postgres, Transaction, Error};
 
 use super::Accessor;
 use super::id_object::{ChannelId, LiverId};
-use super::update_signature::{UpdateSignature, Version, Signed, LatestEq};
 
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
 pub struct Channels {
@@ -36,50 +35,12 @@ impl Channels {
         self.liver_id
     }
 
-    pub fn breach_logo_url(&self) -> String {
-        self.logo_url.clone()
+    pub fn logo_url(&self) -> &str {
+        &self.logo_url
     }
 
-    pub fn breach_description(&self) -> String {
-        self.description.clone()
-    }
-}
-
-impl Version for Channels {
-    fn version(&self) -> UpdateSignature {
-        self.update_signatures
-    }
-}
-
-#[async_trait::async_trait]
-impl Signed for Channels {
-    async fn sign(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<UpdateSignature, Error> {
-        // language=SQL
-        let current = sqlx::query(r#"
-            SELECT update_signatures FROM channels WHERE channel_id LIKE $1
-        "#).bind(&self.channel_id)
-            .fetch_one(&mut *transaction)
-            .await?
-            .try_get::<UpdateSignature, _>(0)?;
-        Ok(current)
-    }
-}
-
-impl LatestEq for Channels {
-    type ComparisonItem = Self;
-
-    fn apply(self, sign: UpdateSignature) -> Self::ComparisonItem {
-        let mut a = self;
-        a.update_signatures = sign;
-        a
-    }
-
-    fn version_compare(&self, compare: UpdateSignature) -> bool {
-        self.update_signatures.0 > compare.0
-    }
-
-    fn irregular_sign(&self) -> bool {
-        self.update_signatures.0 <= 1
+    pub fn description(&self) -> &str {
+        &self.description
     }
 }
 

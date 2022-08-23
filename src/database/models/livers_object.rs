@@ -5,7 +5,6 @@ use sqlx::{Error, Postgres, Row, Transaction};
 
 use super::Accessor;
 use super::id_object::{AffiliationId, LiverId};
-use super::update_signature::{UpdateSignature, LatestEq, Signed, Version};
 
 #[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
 pub struct Livers {
@@ -68,44 +67,6 @@ impl Livers {
            .fetch_all(transaction)
            .await?;
         Ok(filtered)
-    }
-}
-
-impl Version for Livers {
-    fn version(&self) -> UpdateSignature {
-        self.update_signatures
-    }
-}
-
-#[async_trait::async_trait]
-impl Signed for Livers {
-    async fn sign(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<UpdateSignature, Error> {
-        // language=SQL
-        let current = sqlx::query(r#"
-            SELECT update_signatures FROM livers WHERE liver_id = $1
-        "#).bind(&self.liver_id)
-           .fetch_one(&mut *transaction)
-           .await?
-           .try_get::<UpdateSignature, _>(0)?;
-        Ok(current)
-    }
-}
-
-impl LatestEq for Livers {
-    type ComparisonItem = Self;
-
-    fn apply(self, sign: UpdateSignature) -> Self::ComparisonItem {
-        let mut a = self;
-        a.update_signatures = sign;
-        a
-    }
-
-    fn version_compare(&self, compare: UpdateSignature) -> bool {
-        self.update_signatures.0 > compare.0
-    }
-
-    fn irregular_sign(&self) -> bool {
-        self.update_signatures.0 <= 1
     }
 }
 
