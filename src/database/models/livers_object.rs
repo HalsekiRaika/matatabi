@@ -77,8 +77,8 @@ impl Accessor for LiverObject {
     async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
         let ins = sqlx::query_as::<_, Self>(r#"
-            INSERT INTO livers (liver_id, affiliation_id, name, localized_name, update_signatures)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO livers (liver_id, affiliation_id, name, localized_name)
+            VALUES ($1, $2, $3, $4)
             RETURNING *
         "#).bind(self.liver_id)
            .bind(self.affiliation_id)
@@ -108,9 +108,7 @@ impl Accessor for LiverObject {
            .await?;
         // language=SQL
         let update = sqlx::query_as::<_, Self>(r#"
-            UPDATE livers
-            SET name = $1, affiliation_id = $2
-            WHERE liver_id = $3
+            UPDATE livers SET name = $1, affiliation_id = $2 WHERE liver_id = $3
             RETURNING *
         "#).bind(&self.name)
            .bind(self.affiliation_id)
