@@ -77,7 +77,7 @@ impl Accessor for AffiliationObject {
         // language=SQL
         let ins = sqlx::query_as::<_, Self>(r#"
             INSERT INTO affiliations (affiliation_id, name)
-             VALUES ($1, $2, $3)
+             VALUES ($1, $2)
             RETURNING *
         "#).bind(self.affiliation_id)
            .bind(&self.name)
@@ -105,7 +105,7 @@ impl Accessor for AffiliationObject {
             .await?;
         // language=SQL
         let update = sqlx::query_as::<_, Self>(r#"
-            UPDATE affiliations SET name = $1 WHERE affiliation_id = $3
+            UPDATE affiliations SET name = $1 WHERE affiliation_id = $2
             RETURNING *
         "#).bind(&self.name)
            .bind(self.affiliation_id)
