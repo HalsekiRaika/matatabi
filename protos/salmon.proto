@@ -9,6 +9,11 @@ service SalmonApi {
     rpc InsertChannel(stream Channel) returns (TaskResult);
     rpc InsertLiver(stream Liver) returns (TaskResult);
     rpc InsertAffiliation(stream Affiliation) returns (TaskResult);
+
+    rpc FetchAllVideos(Void) returns (stream Video);
+    rpc FetchAllChannels(Void) returns (stream Channel);
+    rpc FetchAllLivers(Void) returns (stream Liver);
+    rpc FetchAllAffiliations(Void) returns (stream Affiliation);
 }
 
 message Video {
@@ -50,3 +55,5 @@ message Affiliation {
 message TaskResult {
     string Message = 1;
 }
+
+message Void { /* No-op */ }
