@@ -3,7 +3,7 @@
 use std::fmt::{Display, Formatter};
 use sqlx::{Error, Postgres, Row, Transaction};
 
-use super::{Accessor, hash};
+use super::{Accessor, hash, Fetch};
 use super::id_object::{AffiliationId, LiverId};
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq, sqlx::FromRow)]
@@ -67,6 +67,19 @@ impl LiverObject {
            .fetch_all(transaction)
            .await?;
         Ok(filtered)
+    }
+}
+
+#[async_trait::async_trait]
+impl Fetch for LiverObject {
+    type Item = Self;
+    async fn fetch_all(transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<Vec<Self::Item>, sqlx::Error> {
+        // language=SQL
+        let all = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM livers
+        "#).fetch_all(transaction)
+           .await?;
+        Ok(all)
     }
 }
 

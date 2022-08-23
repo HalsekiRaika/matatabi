@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use chrono::{DateTime, Local};
 use sqlx::{Row, Postgres, Transaction, Error};
 
-use super::{Accessor, hash};
+use super::{Accessor, hash, Fetch};
 use super::id_object::{ChannelId, LiverId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, sqlx::FromRow)]
@@ -117,6 +117,19 @@ impl Accessor for ChannelObject {
             db == my
         } else { false };
         Ok(com)
+    }
+}
+
+#[async_trait::async_trait]
+impl Fetch for ChannelObject {
+    type Item = Self;
+    async fn fetch_all(transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<Vec<Self::Item>, sqlx::Error> {
+        // language=SQL
+        let all = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM channels
+        "#).fetch_all(transaction)
+           .await?;
+        Ok(all)
     }
 }
 
