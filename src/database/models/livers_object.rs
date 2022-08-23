@@ -3,7 +3,7 @@
 use std::fmt::{Display, Formatter};
 use sqlx::{Error, Postgres, Row, Transaction};
 
-use super::Accessor;
+use super::{Accessor, hash};
 use super::id_object::{AffiliationId, LiverId};
 
 #[derive(Debug, Clone, PartialEq, Hash, Eq, sqlx::FromRow)]
@@ -22,13 +22,13 @@ impl Display for LiverObject {
 
 impl LiverObject {
     pub fn new(
-        liver_id: i64, affiliation_id: Option<i64>,
-        name: impl Into<String>, localized_name: impl Into<String>, update_signature: i64
+        id: impl Into<i64>, affiliation_id: impl Into<Option<i64>>,
+        name: impl Into<String>, localized_name: impl Into<String>
     ) -> Self {
-        let aff = affiliation_id.map(AffiliationId);
         Self {
-            liver_id: LiverId(liver_id), affiliation_id: aff,
-            name: name.into(), localized_name: localized_name.into(), update_signatures: UpdateSignature(update_signature)
+            liver_id: LiverId::new(id.into()), 
+            affiliation_id: affiliation_id.into().map(AffiliationId::new),
+            name: name.into(), localized_name: localized_name.into()
         }
     }
 
@@ -76,7 +76,7 @@ impl Accessor for LiverObject {
 
     async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
-        let ins: Livers = sqlx::query_as::<_, Self>(r#"
+        let ins = sqlx::query_as::<_, Self>(r#"
             INSERT INTO livers (liver_id, affiliation_id, name, localized_name, update_signatures)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
@@ -84,7 +84,6 @@ impl Accessor for LiverObject {
            .bind(self.affiliation_id)
            .bind(&self.name)
            .bind(&self.localized_name)
-           .bind(self.update_signatures)
            .fetch_one(&mut *transaction)
            .await?;
         Ok(ins)
@@ -102,20 +101,19 @@ impl Accessor for LiverObject {
 
     async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::Item, Self::Item), Error> {
         // language=SQL
-        let old: Livers = sqlx::query_as::<_, Self>(r#"
+        let old = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM livers WHERE liver_id = $1
         "#).bind(self.liver_id)
            .fetch_one(&mut *transaction)
            .await?;
         // language=SQL
-        let update: Livers = sqlx::query_as::<_, Self>(r#"
+        let update = sqlx::query_as::<_, Self>(r#"
             UPDATE livers
-            SET name = $1, affiliation_id = $2, update_signatures = $3
-            WHERE liver_id = $4
+            SET name = $1, affiliation_id = $2
+            WHERE liver_id = $3
             RETURNING *
         "#).bind(&self.name)
            .bind(self.affiliation_id)
-           .bind(self.update_signatures)
            .bind(self.liver_id)
            .fetch_one(&mut *transaction)
            .await?;

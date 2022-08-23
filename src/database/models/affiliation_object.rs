@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use sqlx::{Error, FromRow, Row, Transaction};
 use sqlx::postgres::Postgres;
 
-use super::Accessor;
+use super::{Accessor, hash};
 use super::id_object::AffiliationId;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, sqlx::FromRow)]
@@ -77,12 +77,11 @@ impl Accessor for AffiliationObject {
     async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
         let ins = sqlx::query_as::<_, Self>(r#"
-            INSERT INTO affiliations (affiliation_id, name, update_signatures)
+            INSERT INTO affiliations (affiliation_id, name)
              VALUES ($1, $2, $3)
             RETURNING *
         "#).bind(self.affiliation_id.0)
            .bind(&self.name)
-           .bind(self.update_signatures.0)
            .fetch_one(&mut *transaction)
            .await?;
         Ok(ins)
@@ -107,13 +106,10 @@ impl Accessor for AffiliationObject {
             .await?;
         // language=SQL
         let update = sqlx::query_as::<_, Self>(r#"
-            UPDATE affiliations
-              SET name = $1, update_signatures = $2
-            WHERE affiliation_id = $3
+            UPDATE affiliations SET name = $1 WHERE affiliation_id = $3
             RETURNING *
         "#).bind(&self.name)
-           .bind(self.update_signatures.0)
-           .bind(self.affiliation_id.0)
+           .bind(self.affiliation_id)
            .fetch_one(&mut *transaction)
            .await?;
 

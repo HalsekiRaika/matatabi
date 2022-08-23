@@ -51,15 +51,14 @@ impl Accessor for ChannelObject {
     async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
         let ins = sqlx::query_as::<_, Self>(r#"
-            INSERT INTO channels (channel_id, liver_id, logo_url, published_at, description, update_signatures)
-             VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO channels (channel_id, liver_id, logo_url, published_at, description)
+             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
         "#).bind(&self.channel_id)
            .bind(self.liver_id)
            .bind(&self.logo_url)
            .bind(self.published_at)
            .bind(&self.description)
-           .bind(self.update_signatures)
            .fetch_one(&mut *transaction)
            .await?;
         Ok(ins)
@@ -84,12 +83,9 @@ impl Accessor for ChannelObject {
            .await?;
         // language=SQL
         let new = sqlx::query_as::<_, Self>(r#"
-            UPDATE channels
-              SET description = $1, update_signatures = $2
-            WHERE channel_id LIKE $3
+            UPDATE channels SET description = $1, WHERE channel_id LIKE $2
             RETURNING *
         "#).bind(&self.description)
-           .bind(self.update_signatures)
            .bind(&self.channel_id)
            .fetch_one(&mut *transaction)
            .await?;
@@ -130,7 +126,6 @@ pub struct ChannelObjectBuilder {
     pub logo_url: String,
     pub published_at: DateTime<Local>,
     pub description: String,
-    pub update_signatures: UpdateSignature,
     #[doc(hidden)]
     pub init: ()
 }
@@ -143,7 +138,6 @@ impl Default for ChannelObjectBuilder {
             logo_url: "none".to_string(),
             published_at: Local::now(),
             description: "none".to_string(),
-            update_signatures: UpdateSignature::default(),
             init: ()
         }
     }
@@ -157,7 +151,6 @@ impl ChannelObjectBuilder {
             logo_url: self.logo_url,
             published_at: self.published_at,
             description: self.description,
-            update_signatures: self.update_signatures
         }
     }
 }
