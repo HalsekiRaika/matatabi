@@ -18,7 +18,7 @@ use crate::database::models::channel_object::{ChannelObject, ChannelObjectBuilde
 use crate::database::models::upcoming_object::{VideoObject, InitVideoObject};
 use crate::database::models::id_object::{ChannelId, LiverId, VideoId};
 
-#[allow(clippy::all)]
+#[allow(clippy::all, rustdoc::all)]
 mod proto { tonic::include_proto!("salmon"); }
 
 #[derive(Debug)]
@@ -36,19 +36,19 @@ type SalmonResult<T> = Result<Response<T>, Status>;
 
 #[tonic::async_trait]
 impl SalmonApi for SalmonAutoCollector {
-    async fn insert_req_live(&self, req: Request<Streaming<Live>>) -> SalmonResult<TaskResult> {
-        self.collect::<Live, VideoObject>(req).await
+    async fn insert_video(&self, req: Request<Streaming<Video>>) -> SalmonResult<TaskResult> {
+        self.collect::<Video, VideoObject>(req).await
     }
 
-    async fn insert_req_channel(&self, req: Request<Streaming<Channel>>) -> SalmonResult<TaskResult> {
+    async fn insert_channel(&self, req: Request<Streaming<Channel>>) -> SalmonResult<TaskResult> {
         self.collect::<Channel, ChannelObject>(req).await
     }
 
-    async fn insert_req_v_tuber(&self, req: Request<Streaming<Liver>>) -> SalmonResult<TaskResult> {
+    async fn insert_liver(&self, req: Request<Streaming<Liver>>) -> SalmonResult<TaskResult> {
         self.collect::<Liver, LiverObject>(req).await
     }
 
-    async fn insert_req_affiliation(&self, req: Request<Streaming<Affiliation>>) -> SalmonResult<TaskResult> {
+    async fn insert_affiliation(&self, req: Request<Streaming<Affiliation>>) -> SalmonResult<TaskResult> {
         self.collect::<Affiliation, AffiliationObject>(req).await
     }
 }
@@ -71,8 +71,29 @@ impl SalmonAutoCollector {
         let mut transaction = self.pool.begin().await
             .map_err(|e| Status::failed_precondition(format!("Failed to begin build transaction: {:?}", e)))?;
 
-        for item in collector_item {
-            // Todo: implement new logic
+        for (delete_flag, item) in collector_item {
+            if item.exists(&mut transaction).await
+                .map_err(|e| Status::internal(format!("Failed func exists: {:?}", e)))?{
+                if delete_flag {
+                    let del = item.delete(&mut transaction).await
+                        .map_err(|e| Status::internal(format!("Failed func delete: {:?}", e)))?;
+                        tracing::debug!("{:<10} {}", yansi::Paint::magenta("delete"), del)
+                } else if !item.compare(&mut transaction).await
+                    .map_err(|e| Status::internal(format!("Failed func compare: {:?}", e)))? {
+                    let upd = item.update(&mut transaction).await
+                        .map_err(|e| Status::internal(format!("Failed func update: {:?}", e)))?;
+                        tracing::debug!("{:<10} ┌ {}", yansi::Paint::yellow("update old"), upd.0);
+                        tracing::debug!("{:<10} ┕ {}", yansi::Paint::yellow("update new"), upd.1);
+                } else {
+                    tracing::debug!("{:<10} {}", yansi::Paint::blue("ignored"), item)
+                }
+            } else if !delete_flag {
+                let ins = item.insert(&mut transaction).await
+                    .map_err(|e| Status::internal(format!("Failed func insert: {:?}", e)))?;
+                tracing::debug!("{:<10} {}", yansi::Paint::cyan("insert"), ins);
+            } else {
+                tracing::debug!("{:<10} {}", yansi::Paint::blue("ignored"), item)
+            }
         }
 
         transaction.commit().await
@@ -150,7 +171,7 @@ impl DeleteFlag for Channel {
     }
 }
 
-impl DeleteFlag for Live {
+impl DeleteFlag for Video {
     fn flagged(&self) -> bool {
         self.delete
     }
