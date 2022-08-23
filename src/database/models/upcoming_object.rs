@@ -21,6 +21,44 @@ pub struct VideoObject {
 }
 
 impl VideoObject {
+    pub fn video_id(&self) -> &VideoId {
+        &self.video_id
+    }
+
+    pub fn channel_id(&self) -> Option<&ChannelId> {
+        self.channel_id.as_ref()
+    }
+
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn published_at(&self) -> Option<DateTime<Local>> {
+        self.published_at
+    }
+
+    pub fn updated_at(&self) -> Option<DateTime<Local>> {
+        self.updated_at
+    }
+
+    pub fn will_start_at(&self) -> Option<DateTime<Local>> {
+        self.will_start_at
+    }
+
+    pub fn started_at(&self) -> Option<DateTime<Local>> {
+        self.started_at
+    }
+
+    pub fn thumbnail_url(&self) -> &str {
+        &self.thumbnail_url
+    }
+}
+
+impl VideoObject {
     pub async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
       where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL
