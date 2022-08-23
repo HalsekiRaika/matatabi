@@ -7,8 +7,8 @@ use sqlx::{Row, Postgres, Transaction, Error};
 use super::Accessor;
 use super::id_object::{ChannelId, LiverId};
 
-#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
-pub struct Channels {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, sqlx::FromRow)]
+pub struct ChannelObject {
     channel_id: ChannelId,
     liver_id: Option<LiverId>,
     logo_url: String,
@@ -16,13 +16,13 @@ pub struct Channels {
     description: String
 }
 
-impl Display for Channels {
+impl Display for ChannelObject {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "channel >> {}, liver(id): {:?}", self.channel_id, self.liver_id)
     }
 }
 
-impl Channels {
+impl ChannelObject {
     pub fn published_at(&self) -> DateTime<Local> {
         self.published_at
     }
@@ -45,7 +45,7 @@ impl Channels {
 }
 
 #[async_trait::async_trait]
-impl Accessor for Channels {
+impl Accessor for ChannelObject {
     type Item = Self;
 
     async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
@@ -109,7 +109,7 @@ impl Accessor for Channels {
     }
 }
 
-pub struct ChannelsBuilder {
+pub struct ChannelObjectBuilder {
     pub channel_id: ChannelId,
     pub liver_id: Option<LiverId>,
     pub logo_url: String,
@@ -120,7 +120,7 @@ pub struct ChannelsBuilder {
     pub init: ()
 }
 
-impl Default for ChannelsBuilder {
+impl Default for ChannelObjectBuilder {
     fn default() -> Self {
         Self {
             channel_id: ChannelId("none".to_string()),
@@ -134,9 +134,9 @@ impl Default for ChannelsBuilder {
     }
 }
 
-impl ChannelsBuilder {
-    pub fn build(self) -> Channels {
-        Channels {
+impl ChannelObjectBuilder {
+    pub fn build(self) -> ChannelObject {
+        ChannelObject {
             channel_id: self.channel_id,
             liver_id: self.liver_id,
             logo_url: self.logo_url,

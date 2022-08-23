@@ -7,13 +7,13 @@ use sqlx::postgres::Postgres;
 use super::Accessor;
 use super::id_object::AffiliationId;
 
-#[derive(Debug, Clone, PartialEq, Eq, FromRow)]
-pub struct Affiliations {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, sqlx::FromRow)]
+pub struct AffiliationObject {
     affiliation_id: AffiliationId,
     name: String,
 }
 
-impl Display for Affiliations {
+impl Display for AffiliationObject {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "affiliation >> {}, name: {}", self.affiliation_id, self.name)
     }
@@ -29,11 +29,7 @@ impl Affiliations {
         Self { affiliation_id: AffiliationId(id), name: name.into(), update_signatures: UpdateSignature(update_signatures) }
     }
 
-    pub fn get_affiliation_id(&self) -> AffiliationId { self.affiliation_id }
-    pub fn get_name(&self) -> &str { &self.name }
-}
-
-impl Affiliations {
+impl AffiliationObject {
     pub async fn fetch_id_from_name<'a, E>(
         name: impl Into<String>,
         transaction: E
@@ -75,7 +71,7 @@ impl Affiliations {
 }
 
 #[async_trait::async_trait]
-impl Accessor for Affiliations {
+impl Accessor for AffiliationObject {
     type Item = Self;
 
     async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {

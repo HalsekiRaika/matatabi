@@ -7,8 +7,8 @@ use sqlx::{Row, Postgres, Transaction};
 use super::Accessor;
 use super::id_object::{ChannelId, VideoId};
 
-#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
-pub struct Lives {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, sqlx::FromRow)]
+pub struct VideoObject {
     video_id: VideoId,
     channel_id: Option<ChannelId>,
     title: String,
@@ -20,7 +20,7 @@ pub struct Lives {
     thumbnail_url: String
 }
 
-impl Lives {
+impl VideoObject {
     pub async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
       where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL
@@ -32,14 +32,14 @@ impl Lives {
     }
 }
 
-impl Display for Lives {
+impl Display for VideoObject {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "live(video) >> {}, title: {}", self.video_id, self.title)
     }
 }
 
 #[async_trait::async_trait]
-impl Accessor for Lives {
+impl Accessor for VideoObject {
     type Item = Self;
 
     async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, sqlx::Error> {
@@ -129,7 +129,7 @@ pub struct InitLives {
     pub init: ()
 }
 
-impl Default for InitLives {
+impl Default for InitVideoObject {
     fn default() -> Self {
         Self {
             video_id: VideoId("none".to_string()),
@@ -147,9 +147,9 @@ impl Default for InitLives {
     }
 }
 
-impl InitLives {
-    pub fn build(self) -> Lives {
-        Lives {
+impl InitVideoObject {
+    pub fn build(self) -> VideoObject {
+        VideoObject {
             video_id: self.video_id,
             channel_id: self.channel_id,
             title: self.title,
@@ -164,9 +164,9 @@ impl InitLives {
     }
 }
 
-impl Lives {
-    pub fn decompose(self) -> InitLives {
-        InitLives {
+impl VideoObject {
+    pub fn decompose(self) -> InitVideoObject {
+        InitVideoObject {
             video_id: self.video_id,
             channel_id: self.channel_id,
             title: self.title,

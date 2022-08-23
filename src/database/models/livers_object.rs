@@ -6,15 +6,15 @@ use sqlx::{Error, Postgres, Row, Transaction};
 use super::Accessor;
 use super::id_object::{AffiliationId, LiverId};
 
-#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
-pub struct Livers {
+#[derive(Debug, Clone, PartialEq, Hash, Eq, sqlx::FromRow)]
+pub struct LiverObject {
     liver_id: LiverId,
     affiliation_id: Option<AffiliationId>,
     name: String,
     localized_name: String,
 }
 
-impl Display for Livers {
+impl Display for LiverObject {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "liver >> {}, affiliation(id): {:?}, name: {}", self.liver_id, self.affiliation_id, self.name)
     }
@@ -47,7 +47,7 @@ impl LiverObject {
     }
 }
 
-impl Livers {
+impl LiverObject {
     pub async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
         where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL
@@ -71,7 +71,7 @@ impl Livers {
 }
 
 #[async_trait::async_trait]
-impl Accessor for Livers {
+impl Accessor for LiverObject {
     type Item = Self;
 
     async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
