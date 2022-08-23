@@ -21,22 +21,10 @@ impl Display for Affiliations {
     }
 }
 
-#[derive(Debug, Clone, FromRow)]
-struct RawAffiliations {
-    affiliation_id: Option<i64>,
-    name: Option<String>,
-    update_signatures: Option<i64>
-}
-
-impl From<RawAffiliations> for Affiliations {
-    fn from(raw: RawAffiliations) -> Self {
-        let id = if let Some(id) = raw.affiliation_id { id } else { 0 };
-        let name = if let Some(name) = raw.name { name } else { "none".to_string() };
-        let sign = if let Some(sign) = raw.update_signatures { sign } else { 0 };
-
-        Affiliations::new(id, name, sign)
+impl AffiliationObject {
+    pub fn new(id: impl Into<i64>, name: impl Into<String>) -> AffiliationObject {
+        Self { affiliation_id: AffiliationId::new(id), name: name.into() }
     }
-}
 
 impl Affiliations {
     pub fn new(id: i64, name: impl Into<String>, update_signatures: i64) -> Affiliations {

@@ -22,27 +22,7 @@ impl Display for Livers {
     }
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
-struct RawLivers {
-    liver_id: Option<i64>,
-    affiliation_id: Option<i64>,
-    name: Option<String>,
-    localized_name: Option<String>,
-    update_signatures: Option<i64>
-}
-
-impl From<RawLivers> for Livers {
-    fn from(raw: RawLivers) -> Self {
-        let id = if let Some(id) = raw.liver_id { id } else { 0 };
-        let aff = raw.affiliation_id;
-        let name = if let Some(name) = raw.name { name } else { "none".to_string() };
-        let localized = if let Some(localized) = raw.localized_name { localized } else { "none".to_string() };
-        let sign = if let Some(sign) = raw.update_signatures { sign } else { 0 };
-        Livers::new(id, aff, name, localized, sign)
-    }
-}
-
-impl Livers {
+impl LiverObject {
     pub fn new(
         liver_id: i64, affiliation_id: Option<i64>,
         name: impl Into<String>, localized_name: impl Into<String>, update_signature: i64
