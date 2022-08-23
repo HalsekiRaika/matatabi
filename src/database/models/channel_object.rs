@@ -133,7 +133,7 @@ pub struct ChannelObjectBuilder {
 impl Default for ChannelObjectBuilder {
     fn default() -> Self {
         Self {
-            channel_id: ChannelId("none".to_string()),
+            channel_id: ChannelId::default(),
             liver_id: None,
             logo_url: "none".to_string(),
             published_at: Local::now(),

@@ -144,7 +144,7 @@ pub struct InitVideoObject {
 impl Default for InitVideoObject {
     fn default() -> Self {
         Self {
-            video_id: VideoId("none".to_string()),
+            video_id: VideoId::default(),
             channel_id: None,
             title: "none".to_string(),
             description: "none".to_string(),
