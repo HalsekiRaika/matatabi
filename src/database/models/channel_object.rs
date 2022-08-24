@@ -123,7 +123,8 @@ impl Accessor for ChannelObject {
 #[async_trait::async_trait]
 impl Fetch for ChannelObject {
     type Item = Self;
-    async fn fetch_all(transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<Vec<Self::Item>, sqlx::Error> {
+    async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
+      where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL
         let all = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM channels
