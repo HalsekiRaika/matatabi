@@ -3,11 +3,8 @@ use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::migrate::{Migrate, MigrateDatabase, Migrator};
 
-use crate::logger::Logger;
-
 pub async fn connect() -> Result<PgPool, sqlx::Error> {
-    let logger = Logger::new(Some("connect"));
-    logger.info("Init database connection.");
+    tracing::info!("Init database connection.");
     let url = dotenv::var("DATABASE_URL")
         .expect("\"DATABASE_URL\" does not exist in .env .");
     let connection_pool = PgPoolOptions::new()
@@ -25,21 +22,20 @@ pub async fn connect() -> Result<PgPool, sqlx::Error> {
         )
         .connect(&url)
         .await?;
-    logger.info("Build successful database connection.");
+    tracing::info!("Build successful database connection.");
     Ok(connection_pool)
 }
 
 pub async fn migration() -> Result<(), sqlx::Error> {
-    let logger = Logger::new(Some("migration"));
-    logger.info("Check for resource database migration.");
+    tracing::info!("Check for resource database migration.");
     let uri = dotenv::var("DATABASE_URL")
                         .expect("Where am I supposed to look? \"DATABASE_URL\" does not exist in .env .");
     let uri = uri.as_str();
     if !Postgres::database_exists(uri).await? {
-        logger.info("Create database because not found target.");
+        tracing::info!("Create database because not found target.");
         Postgres::create_database(uri).await?;
     }
-    logger.info("Start apply migrations.");
+    tracing::info!("Start apply migrations.");
     let migrator = Migrator::new(std::path::Path::new("migrations")).await?;
     let mut migrate_connection = PgConnection::connect(uri).await?;
     migrate_connection.ensure_migrations_table().await?;
@@ -60,11 +56,11 @@ pub async fn migration() -> Result<(), sqlx::Error> {
         if migration.version > current_ver {
             //println!("migrate {} to {}", ver, migration.version);
             let applied = migrate_connection.apply(migration).await?;
-            logger.debug(&format!("Applied migration {} to {}: {}ms", current_ver, migration.version, applied.as_millis()));
+            tracing::debug!("Applied migration {} to {}: {}ms", current_ver, migration.version, applied.as_millis());
         } else {
-            logger.debug(&format!("Skipped migration {}", current_ver));
+            tracing::debug!("Skipped migration {}", current_ver);
         }
     }
-    logger.info("Migration successful.");
+    tracing::info!("Migration successful.");
     Ok(())
 }

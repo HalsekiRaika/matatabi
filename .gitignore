@@ -1,6 +1,7 @@
 .mysql
 /.idea
 /target
+/logs
 .idea/discord.xml
 .idea/matatabi.iml
 .idea/modules.xml

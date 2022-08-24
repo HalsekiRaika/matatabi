@@ -5,13 +5,18 @@ package salmon;
 import "google/protobuf/timestamp.proto";
 
 service SalmonApi {
-    rpc insertReqLive(stream Live) returns (TaskResult);
-    rpc insertReqChannel(stream Channel) returns (TaskResult);
-    rpc insertReqVTuber(stream Liver) returns (TaskResult);
-    rpc insertReqAffiliation(stream Affiliation) returns (TaskResult);
+    rpc InsertVideo(stream Video) returns (TaskResult);
+    rpc InsertChannel(stream Channel) returns (TaskResult);
+    rpc InsertLiver(stream Liver) returns (TaskResult);
+    rpc InsertAffiliation(stream Affiliation) returns (TaskResult);
+
+    rpc FetchAllVideos(Void) returns (stream Video);
+    rpc FetchAllChannels(Void) returns (stream Channel);
+    rpc FetchAllLivers(Void) returns (stream Liver);
+    rpc FetchAllAffiliations(Void) returns (stream Affiliation);
 }
 
-message Live {
+message Video {
     string VideoId = 1;
     optional string ChannelId = 2;
     string Title = 3;
@@ -20,7 +25,7 @@ message Live {
     optional google.protobuf.Timestamp UpdatedAt = 7;
     optional google.protobuf.Timestamp WillStartAt = 8; // status in upcoming
     optional google.protobuf.Timestamp StartedAt = 9; // status in live
-    sint64 override_at = 10;
+    bool delete = 10;
 }
 
 message Channel {
@@ -29,23 +34,26 @@ message Channel {
     string LogoUrl = 3;
     google.protobuf.Timestamp PublishedAt = 4;
     string Description = 5;
-    sint64 override_at = 6;
+    bool delete = 6;
 }
 
 message Liver {
     sint64 LiverId = 1;
     string Name = 2;
-    optional sint64 AffiliationId = 3;
-    sint64 override_at = 4;
+    string LocalizedName = 3;
+    optional sint64 AffiliationId = 4;
+    bool delete = 5;
 }
 
 message Affiliation {
     sint64 AffiliationId = 1;
     string Name = 2;
-    sint64 override_at = 3;
+    bool delete = 3;
 }
 
 
 message TaskResult {
     string Message = 1;
 }
+
+message Void { /* No-op */ }

@@ -1,160 +1,170 @@
 #![allow(dead_code)]
 
+use std::fmt::{Display, Formatter};
 use chrono::{DateTime, Local};
-use sqlx::{Row, Postgres, Transaction};
-use crate::database::models::id_object::{ChannelId, LiverId};
-use crate::database::models::{Printable, Transactable, Updatable};
-use crate::database::models::update_signature::UpdateSignature;
+use sqlx::{Row, Postgres, Transaction, Error};
 
-#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
-pub struct Channels {
+use super::{Accessor, hash, Fetch};
+use super::id_object::{ChannelId, LiverId};
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, sqlx::FromRow)]
+pub struct ChannelObject {
     channel_id: ChannelId,
     liver_id: Option<LiverId>,
     logo_url: String,
     published_at: DateTime<Local>,
-    description: String,
-    update_signatures: UpdateSignature
+    description: String
 }
 
-impl Channels {
-    
-}
-
-impl Printable for Channels {
-    fn get_primary_name(&self) -> String {
-        self.channel_id.clone().0
-    }
-
-    fn get_secondary_name(&self) -> String {
-        self.liver_id.unwrap_or(LiverId(0)).0.to_string()
+impl Display for ChannelObject {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "channel >> {}, liver(id): {:?}", self.channel_id, self.liver_id)
     }
 }
 
-#[async_trait::async_trait]
-impl Updatable for Channels {
-    fn apply_signature(&self, sign: i64) -> Self {
-        let mut a = self.clone();
-        a.update_signatures = UpdateSignature(sign);
-        a
+impl ChannelObject {
+    pub fn published_at(&self) -> DateTime<Local> {
+        self.published_at
     }
 
-    fn is_empty_sign(&self) -> bool {
-        self.update_signatures.0 <= 1
+    pub fn channel_id(&self) -> &ChannelId {
+        &self.channel_id
     }
 
-    fn get_signature(&self) -> i64 {
-        self.update_signatures.0
+    pub fn liver_id(&self) -> Option<LiverId> {
+        self.liver_id
     }
 
-    async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
-        // language=SQL
-        let may_older: i64 = sqlx::query(r#"
-            SELECT update_signatures FROM channels WHERE channel_id LIKE $1
-        "#).bind(&self.channel_id)
-           .fetch_one(&mut *transaction)
-           .await?
-           .get::<i64, _>(0);
-        Ok(self.update_signatures.0 > may_older)
+    pub fn logo_url(&self) -> &str {
+        &self.logo_url
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
     }
 }
 
 #[async_trait::async_trait]
-impl Transactable<Channels> for Channels {
-    async fn insert(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, sqlx::Error> {
+impl Accessor for ChannelObject {
+    type Item = Self;
+
+    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
-        let insert = sqlx::query_as::<_, Channels>(r#"
-            INSERT INTO channels (channel_id, liver_id, logo_url, published_at, description, update_signatures)
-             VALUES ($1, $2, $3, $4, $5, $6)
+        let ins = sqlx::query_as::<_, Self>(r#"
+            INSERT INTO channels (channel_id, liver_id, logo_url, published_at, description)
+             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
         "#).bind(&self.channel_id)
            .bind(self.liver_id)
            .bind(&self.logo_url)
            .bind(self.published_at)
            .bind(&self.description)
-           .bind(self.update_signatures)
            .fetch_one(&mut *transaction)
            .await?;
-        Ok(insert)
+        Ok(ins)
     }
 
-    async fn update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), sqlx::Error> {
+    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
-        let old = sqlx::query_as::<_, Channels>(r#"
+        let del = sqlx::query_as::<_, Self>(r#"
+            DELETE FROM channels WHERE channel_id LIKE $1 RETURNING *
+        "#).bind(&self.channel_id)
+           .fetch_one(&mut *transaction)
+           .await?;
+        Ok(del)
+    }
+
+    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::Item, Self::Item), Error> {
+        // language=SQL
+        let old = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM channels WHERE channel_id LIKE $1
         "#).bind(&self.channel_id)
            .fetch_one(&mut *transaction)
            .await?;
         // language=SQL
-        let new = sqlx::query_as::<_, Channels>(r#"
-            UPDATE channels
-              SET description = $1, update_signatures = $2
-            WHERE channel_id LIKE $3
+        let new = sqlx::query_as::<_, Self>(r#"
+            UPDATE channels SET description = $1 WHERE channel_id LIKE $2
             RETURNING *
         "#).bind(&self.description)
-           .bind(self.update_signatures)
            .bind(&self.channel_id)
            .fetch_one(&mut *transaction)
            .await?;
         Ok((old, new))
     }
 
-    async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
+    async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, Error> {
         // language=SQL
         let channel_exists = sqlx::query(r#"
             SELECT EXISTS(SELECT 1 FROM channels WHERE channel_id LIKE $1)
         "#).bind(&self.channel_id)
            .fetch_one(&mut *transaction)
            .await?
-           .get::<bool, _>(0);
+           .try_get::<bool, _>(0)?;
 
         Ok(channel_exists)
     }
 
-    async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, sqlx::Error> {
-        // language=SQL
-        let del = sqlx::query_as::<_, LiverId>(r#"
-            DELETE FROM channels WHERE channel_id LIKE $1 RETURNING liver_id
+    async fn compare(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<bool, sqlx::Error> {
+        let com = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM channels WHERE channel_id LIKE $1
         "#).bind(&self.channel_id)
-           .fetch_one(&mut *transaction)
+           .fetch_optional(&mut *transaction)
            .await?;
-        Ok(del.0)
+        
+        let com = if let Some(db) = com {
+            let db = hash(&db);
+            let my = hash(&self);
+            db == my
+        } else { false };
+        Ok(com)
     }
 }
 
-pub struct ChannelsBuilder {
+#[async_trait::async_trait]
+impl Fetch for ChannelObject {
+    type Item = Self;
+    async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
+      where E: sqlx::Executor<'a, Database = Postgres> + Copy {
+        // language=SQL
+        let all = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM channels
+        "#).fetch_all(transaction)
+           .await?;
+        Ok(all)
+    }
+}
+
+pub struct ChannelObjectBuilder {
     pub channel_id: ChannelId,
     pub liver_id: Option<LiverId>,
     pub logo_url: String,
     pub published_at: DateTime<Local>,
     pub description: String,
-    pub update_signatures: UpdateSignature,
     #[doc(hidden)]
     pub init: ()
 }
 
-impl Default for ChannelsBuilder {
+impl Default for ChannelObjectBuilder {
     fn default() -> Self {
         Self {
-            channel_id: ChannelId("none".to_string()),
+            channel_id: ChannelId::default(),
             liver_id: None,
             logo_url: "none".to_string(),
             published_at: Local::now(),
             description: "none".to_string(),
-            update_signatures: UpdateSignature::default(),
             init: ()
         }
     }
 }
 
-impl ChannelsBuilder {
-    pub fn build(self) -> Channels {
-        Channels {
+impl ChannelObjectBuilder {
+    pub fn build(self) -> ChannelObject {
+        ChannelObject {
             channel_id: self.channel_id,
             liver_id: self.liver_id,
             logo_url: self.logo_url,
             published_at: self.published_at,
             description: self.description,
-            update_signatures: self.update_signatures
         }
     }
 }

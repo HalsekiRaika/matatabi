@@ -1,175 +1,168 @@
 #![allow(dead_code)]
 
-use sqlx::{Postgres, Row, Transaction};
-use crate::database::models::id_object::{AffiliationId, LiverId};
-use crate::database::models::{Printable, Transactable, Updatable};
-use crate::database::models::update_signature::UpdateSignature;
+use std::fmt::{Display, Formatter};
+use sqlx::{Error, Postgres, Row, Transaction};
 
-#[derive(Debug, Clone, PartialEq, Eq, sqlx::FromRow)]
-pub struct Livers {
+use super::{Accessor, hash, Fetch};
+use super::id_object::{AffiliationId, LiverId};
+
+#[derive(Debug, Clone, PartialEq, Hash, Eq, sqlx::FromRow)]
+pub struct LiverObject {
     liver_id: LiverId,
     affiliation_id: Option<AffiliationId>,
     name: String,
-    update_signatures: UpdateSignature
+    localized_name: String,
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
-struct RawLivers {
-    liver_id: Option<i64>,
-    affiliation_id: Option<i64>,
-    name: Option<String>,
-    update_signatures: Option<i64>
-}
-
-impl From<RawLivers> for Livers {
-    fn from(raw: RawLivers) -> Self {
-        let id = if let Some(id) = raw.liver_id { id } else { 0 };
-        let aff = raw.affiliation_id;
-        let name = if let Some(name) = raw.name { name } else { "none".to_string() };
-        let sign = if let Some(sign) = raw.update_signatures { sign } else { 0 };
-        Livers::new(id, aff, name, sign)
+impl Display for LiverObject {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "liver >> {}, affiliation(id): {:?}, name: {}", self.liver_id, self.affiliation_id, self.name)
     }
 }
 
-impl Livers {
+impl LiverObject {
     pub fn new(
-        liver_id: i64, affiliation_id: Option<i64>,
-        name: impl Into<String>, update_signature: i64
+        id: impl Into<i64>, affiliation_id: impl Into<Option<i64>>,
+        name: impl Into<String>, localized_name: impl Into<String>
     ) -> Self {
-        let aff = affiliation_id.map(AffiliationId);
         Self {
-            liver_id: LiverId(liver_id), affiliation_id: aff,
-            name: name.into(), update_signatures: UpdateSignature(update_signature)
+            liver_id: LiverId::new(id.into()), 
+            affiliation_id: affiliation_id.into().map(AffiliationId::new),
+            name: name.into(), localized_name: localized_name.into()
         }
     }
 
-    pub fn get_name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name
     }
 
-    pub fn get_liver_id(&self) -> LiverId {
+    pub fn localized_name(&self) -> &str { &self.localized_name }
+
+    pub fn liver_id(&self) -> LiverId {
         self.liver_id
     }
 
-    pub fn get_affiliation_id(&self) -> Option<AffiliationId> {
+    pub fn affiliation_id(&self) -> Option<AffiliationId> {
         self.affiliation_id
     }
 }
 
-impl Livers {
+impl LiverObject {
     pub async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
         where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL
         let all = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM livers
         "#).fetch_all(transaction)
-            .await?;
+           .await?;
+        Ok(all)
+    }
+
+    pub async fn fetch_filtered_affiliation<'a, E>(id: i64, transaction: E) -> Result<Vec<Self>, sqlx::Error>
+        where E: sqlx::Executor<'a, Database = Postgres> + Copy {
+        // language=SQL
+        let filtered = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM livers WHERE affiliation_id = $1
+        "#).bind(id)
+           .fetch_all(transaction)
+           .await?;
+        Ok(filtered)
+    }
+}
+
+#[async_trait::async_trait]
+impl Fetch for LiverObject {
+    type Item = Self;
+    async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
+      where E: sqlx::Executor<'a, Database = Postgres> + Copy {
+        // language=SQL
+        let all = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM livers
+        "#).fetch_all(transaction)
+           .await?;
         Ok(all)
     }
 }
 
-impl Printable for Livers {
-    fn get_primary_name(&self) -> String {
-        self.name.clone()
-    }
-
-    fn get_secondary_name(&self) -> String {
-        self.liver_id.0.to_string()
-    }
-}
-
 #[async_trait::async_trait]
-impl Updatable for Livers {
-    fn apply_signature(&self, sign: i64) -> Self {
-        let mut a = self.clone();
-        a.update_signatures = UpdateSignature(sign);
-        a
-    }
+impl Accessor for LiverObject {
+    type Item = Self;
 
-    fn is_empty_sign(&self) -> bool {
-        self.update_signatures.0 <= 1
-    }
-
-    fn get_signature(&self) -> i64 {
-        self.update_signatures.0
-    }
-
-    async fn can_update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
+    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
-        let may_older: i64 = sqlx::query(r#"
-            SELECT update_signatures FROM livers WHERE liver_id = $1
-        "#).bind(self.liver_id)
-           .fetch_one(&mut *transaction)
-           .await?
-           .get::<i64, _>(0);
-        Ok(self.update_signatures.0 > may_older)
-    }
-}
-
-#[async_trait::async_trait]
-impl Transactable<Livers> for Livers {
-    async fn insert(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, sqlx::Error> {
-        // language=SQL
-        let insert: Livers = sqlx::query_as::<_, Self>(r#"
-            INSERT INTO livers (liver_id, affiliation_id, name, update_signatures)
+        let ins = sqlx::query_as::<_, Self>(r#"
+            INSERT INTO livers (liver_id, affiliation_id, name, localized_name)
             VALUES ($1, $2, $3, $4)
             RETURNING *
         "#).bind(self.liver_id)
            .bind(self.affiliation_id)
            .bind(&self.name)
-           .bind(self.update_signatures.0)
+           .bind(&self.localized_name)
            .fetch_one(&mut *transaction)
            .await?;
-        Ok(insert)
+        Ok(ins)
     }
 
-    async fn update(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), sqlx::Error> {
+    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
         // language=SQL
-        let old: Livers = sqlx::query_as::<_, Self>(r#"
+        let del = sqlx::query_as::<_, Self>(r#"
+            DELETE FROM livers WHERE liver_id = $1 RETURNING *
+        "#).bind(self.liver_id)
+           .fetch_one(&mut *transaction)
+           .await?;
+        Ok(del)
+    }
+
+    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::Item, Self::Item), Error> {
+        // language=SQL
+        let old = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM livers WHERE liver_id = $1
         "#).bind(self.liver_id)
            .fetch_one(&mut *transaction)
            .await?;
         // language=SQL
-        let update: Livers = sqlx::query_as::<_, Self>(r#"
-            UPDATE livers
-            SET name = $1, affiliation_id = $2, update_signatures = $3
-            WHERE liver_id = $4
+        let update = sqlx::query_as::<_, Self>(r#"
+            UPDATE livers SET name = $1, affiliation_id = $2 WHERE liver_id = $3
             RETURNING *
         "#).bind(&self.name)
-           .bind(self.affiliation_id.unwrap().0)
-           .bind(self.update_signatures.0)
-           .bind(self.liver_id.0)
+           .bind(self.affiliation_id)
+           .bind(self.liver_id)
            .fetch_one(&mut *transaction)
            .await?;
         Ok((old, update))
     }
 
-    async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, sqlx::Error> {
+    async fn exists(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<bool, Error> {
         // language=SQL
         let is_name_exist = sqlx::query(r#"
             SELECT EXISTS(SELECT 1 FROM livers WHERE name LIKE $1)
         "#).bind(&self.name)
            .fetch_one(&mut *transaction)
            .await?
-           .get::<bool, _>(0);
+           .try_get::<bool, _>(0)?;
         // language=SQL
         let is_id_exist = sqlx::query(r#"
             SELECT EXISTS(SELECT 1 FROM livers WHERE liver_id = $1)
         "#).bind(self.liver_id)
            .fetch_one(&mut *transaction)
            .await?
-           .get::<bool, _>(0);
+           .try_get::<bool, _>(0)?;
         Ok(is_name_exist || is_id_exist)
     }
 
-    async fn delete(&self, transaction: &mut Transaction<'_, Postgres>) -> Result<i64, sqlx::Error> {
-        // language=SQL
-        let del = sqlx::query_as::<_, LiverId>(r#"
-            DELETE FROM livers WHERE liver_id = $1 RETURNING liver_id
-        "#).bind(self.liver_id)
-           .fetch_one(&mut *transaction)
+    async fn compare(&self, transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>) -> Result<bool, sqlx::Error> {
+        let com = sqlx::query_as::<_, Self>(r#"
+            SELECT * FROM livers WHERE liver_id = $1
+        "#).bind(&self.liver_id)
+           .fetch_optional(&mut *transaction)
            .await?;
-        Ok(del.0)
+        
+        let com = if let Some(db) = com {
+            let db = hash(&db);
+            let my = hash(&self);
+            db == my
+        } else { false };
+        Ok(com)
     }
+
 }
