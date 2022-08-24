@@ -132,9 +132,7 @@ impl SalmonAutoCollector {
               G: From<D> + Send + 'static
     {
         use tokio_stream::StreamExt;
-        let mut transaction = self.pool.begin().await
-            .map_err(|e| Status::failed_precondition(format!("Failed to begin build transaction: {:?}", e)))?;
-        let db_item = D::fetch_all(&mut transaction).await
+        let db_item = D::fetch_all(&self.pool).await
             .map_err(|e| Status::internal(format!("Failed fetch: {:?}", e)))?
             .into_iter()
             .map(G::from)

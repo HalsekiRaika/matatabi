@@ -1,6 +1,7 @@
 use axum::{Extension, Json};
 use axum::http::StatusCode;
 use sqlx::PgPool;
+use crate::database::models::Fetch;
 use crate::models::upcoming::Video;
 use crate::database::models::upcoming_object::VideoObject;
 
