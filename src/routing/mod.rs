@@ -1,6 +1,7 @@
 pub mod affiliation;
-pub mod upcoming;
 pub mod liver;
+pub mod channel;
+pub mod upcoming;
 
 use axum::http::StatusCode;
 use axum::Json;

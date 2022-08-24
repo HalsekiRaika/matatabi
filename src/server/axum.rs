@@ -11,6 +11,7 @@ pub async fn run_webapi_server(connection_instance: Pool<Postgres>) {
         .route("/affiliations/:id", get(routing::affiliation::get_affiliation_from_id))
         .route("/livers", get(routing::liver::get_livers))
         .route("/livers/filtered", get(routing::liver::get_livers_filtered))
+        .route("/channels", get(routing::channel::get_channels))
         .route("/upcomings", get(routing::upcoming::get_upcomings))
         .layer(axum::Extension(connection_instance));
 
