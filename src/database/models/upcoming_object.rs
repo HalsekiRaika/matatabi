@@ -66,9 +66,7 @@ impl Display for VideoObject {
 
 #[async_trait::async_trait]
 impl Accessor for VideoObject {
-    type Item = Self;
-
-    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, sqlx::Error> {
+    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, sqlx::Error> {
         // language=SQL
         let insert = sqlx::query_as::<_, Self>(r#"
             INSERT INTO videos
@@ -91,7 +89,7 @@ impl Accessor for VideoObject {
         Ok(insert)
     }
 
-    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, sqlx::Error> {
+    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, sqlx::Error> {
         // language=SQL
         let delete = sqlx::query_as::<_, Self>(r#"
             DELETE FROM videos WHERE video_id LIKE $1 RETURNING *
@@ -101,7 +99,7 @@ impl Accessor for VideoObject {
         Ok(delete)
     }
 
-    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::Item, Self::Item), sqlx::Error> {
+    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), sqlx::Error> {
         // language=SQL
         let old = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM videos WHERE video_id LIKE $1
@@ -152,7 +150,6 @@ impl Accessor for VideoObject {
 
 #[async_trait::async_trait]
 impl Fetch for VideoObject {
-    type Item = Self;
     async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
       where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL

@@ -78,7 +78,7 @@ impl SalmonApi for SalmonAutoCollector {
 
 impl SalmonAutoCollector {
     pub async fn collect<R, T>(&self, receive: Request<Streaming<R>>) -> SalmonResult<TaskResult>
-        where T: From<R> + Display + Accessor<Item = T>,
+        where T: From<R> + Display + Accessor,
               R: DeleteFlag
     {
         use futures::StreamExt;
@@ -109,14 +109,14 @@ impl SalmonAutoCollector {
                         tracing::debug!("{:<10} ┌ {}", yansi::Paint::yellow("update old"), upd.0);
                         tracing::debug!("{:<10} ┕ {}", yansi::Paint::yellow("update new"), upd.1);
                 } else {
-                    tracing::debug!("{:<10} {}", yansi::Paint::blue("ignored"), item)
+                    tracing::debug!("{:<10} {}", yansi::Paint::blue("unchanged"), item)
                 }
             } else if !delete_flag {
                 let ins = item.insert(&mut transaction).await
                     .map_err(|e| Status::internal(format!("Failed func insert: {:?}", e)))?;
                 tracing::debug!("{:<10} {}", yansi::Paint::cyan("insert"), ins);
             } else {
-                tracing::debug!("{:<10} {}", yansi::Paint::blue("ignored"), item)
+                tracing::debug!("{:<10} {}", yansi::Paint::blue("not found"), item)
             }
         }
 
@@ -128,7 +128,7 @@ impl SalmonAutoCollector {
     }
 
     pub async fn fetch<D, G>(&self) -> SalmonResult<SalmonResponseStream<G>>
-        where D: From<G> + Send + 'static + Display + Fetch<Item = D>,
+        where D: From<G> + Send + 'static + Display + Fetch,
               G: From<D> + Send + 'static
     {
         use tokio_stream::StreamExt;
@@ -289,7 +289,7 @@ pub async fn run_salmon(pool: sqlx::Pool<Postgres>) -> Result<(), Box<dyn std::e
             .add_service(SalmonApiServer::new(server))
             .serve(bind_ip)
             .await
-            .expect("Server failed to start...")
+            .expect("Salmon Server failed to start...")
     });
 
     Ok(())

@@ -61,7 +61,6 @@ impl AffiliationObject {
 
 #[async_trait::async_trait]
 impl Fetch for AffiliationObject {
-    type Item = Self;
     async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
       where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL
@@ -75,9 +74,7 @@ impl Fetch for AffiliationObject {
 
 #[async_trait::async_trait]
 impl Accessor for AffiliationObject {
-    type Item = Self;
-
-    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
+    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, Error> {
         // language=SQL
         let ins = sqlx::query_as::<_, Self>(r#"
             INSERT INTO affiliations (affiliation_id, name)
@@ -90,7 +87,7 @@ impl Accessor for AffiliationObject {
         Ok(ins)
     }
 
-    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
+    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, Error> {
         // language=SQL
         let del = sqlx::query_as::<_, Self>(r#"
             DELETE FROM affiliations WHERE affiliation_id = $1 RETURNING *
@@ -100,7 +97,7 @@ impl Accessor for AffiliationObject {
         Ok(del)
     }
 
-    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::Item, Self::Item), Error> {
+    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), Error> {
         // language=SQL
         let old = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM affiliations WHERE affiliation_id = $1
