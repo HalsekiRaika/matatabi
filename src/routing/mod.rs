@@ -1,7 +1,14 @@
-pub mod affiliation;
-pub mod liver;
-pub mod channel;
-pub mod upcoming;
+mod affiliation;
+mod liver;
+mod channel;
+mod upcoming;
+
+pub use self::{
+    affiliation::*,
+    liver::*,
+    channel::*,
+    upcoming::*,
+};
 
 use axum::http::StatusCode;
 use axum::Json;

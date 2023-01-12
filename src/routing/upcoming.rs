@@ -1,9 +1,8 @@
 use axum::{Extension, Json};
 use axum::http::StatusCode;
 use sqlx::PgPool;
-use crate::database::models::Fetch;
-use crate::models::upcoming::Video;
-use crate::database::models::upcoming_object::VideoObject;
+use crate::models::Video;
+use crate::database::{Fetch, VideoObject};
 
 use super::ApiError;
 use super::ErrorResponse;

@@ -1,7 +1,6 @@
 use chrono::{DateTime, Local};
 use serde::{Serialize, Deserialize};
-use crate::database::models::id_object::VideoId;
-use crate::database::models::upcoming_object::VideoObject;
+use crate::database::{VideoId, VideoObject};
 
 use super::StringId;
 use super::channel::Channel;

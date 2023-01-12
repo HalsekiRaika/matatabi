@@ -2,8 +2,8 @@ use axum::http::StatusCode;
 use axum::{Extension, Json};
 use sqlx::PgPool;
 
-use crate::models::channel::Channel;
-use crate::database::models::{channel_object::ChannelObject, Fetch};
+use crate::models::Channel;
+use crate::database::{ChannelObject, Fetch};
 
 use super::{ErrorResponse, ApiError};
 

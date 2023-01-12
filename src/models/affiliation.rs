@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
-use crate::database::models::affiliation_object::AffiliationObject;
-use crate::database::models::id_object::AffiliationId;
+use crate::database::{AffiliationId, AffiliationObject};
 
 use super::NumId;
 

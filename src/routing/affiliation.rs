@@ -2,9 +2,8 @@ use axum::{Extension, Json};
 use axum::extract::Path;
 use axum::http::StatusCode;
 use sqlx::PgPool;
-use crate::database::models::Fetch;
-use crate::models::affiliation::Affiliation;
-use crate::database::models::affiliation_object::AffiliationObject;
+use crate::database::{Fetch, AffiliationObject};
+use crate::models::Affiliation;
 
 use super::ApiError;
 use super::ErrorResponse;

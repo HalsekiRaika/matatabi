@@ -46,9 +46,7 @@ impl ChannelObject {
 
 #[async_trait::async_trait]
 impl Accessor for ChannelObject {
-    type Item = Self;
-
-    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
+    async fn insert(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, Error> {
         // language=SQL
         let ins = sqlx::query_as::<_, Self>(r#"
             INSERT INTO channels (channel_id, liver_id, logo_url, published_at, description)
@@ -64,7 +62,7 @@ impl Accessor for ChannelObject {
         Ok(ins)
     }
 
-    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self::Item, Error> {
+    async fn delete(self, transaction: &mut Transaction<'_, Postgres>) -> Result<Self, Error> {
         // language=SQL
         let del = sqlx::query_as::<_, Self>(r#"
             DELETE FROM channels WHERE channel_id LIKE $1 RETURNING *
@@ -74,7 +72,7 @@ impl Accessor for ChannelObject {
         Ok(del)
     }
 
-    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self::Item, Self::Item), Error> {
+    async fn update(self, transaction: &mut Transaction<'_, Postgres>) -> Result<(Self, Self), Error> {
         // language=SQL
         let old = sqlx::query_as::<_, Self>(r#"
             SELECT * FROM channels WHERE channel_id LIKE $1
@@ -122,7 +120,6 @@ impl Accessor for ChannelObject {
 
 #[async_trait::async_trait]
 impl Fetch for ChannelObject {
-    type Item = Self;
     async fn fetch_all<'a, E>(transaction: E) -> Result<Vec<Self>, sqlx::Error>
       where E: sqlx::Executor<'a, Database = Postgres> + Copy {
         // language=SQL
@@ -134,7 +131,7 @@ impl Fetch for ChannelObject {
     }
 }
 
-pub struct ChannelObjectBuilder {
+pub struct InitChannelObject {
     pub channel_id: ChannelId,
     pub liver_id: Option<LiverId>,
     pub logo_url: String,
@@ -144,7 +141,7 @@ pub struct ChannelObjectBuilder {
     pub init: ()
 }
 
-impl Default for ChannelObjectBuilder {
+impl Default for InitChannelObject {
     fn default() -> Self {
         Self {
             channel_id: ChannelId::default(),
@@ -157,7 +154,7 @@ impl Default for ChannelObjectBuilder {
     }
 }
 
-impl ChannelObjectBuilder {
+impl InitChannelObject {
     pub fn build(self) -> ChannelObject {
         ChannelObject {
             channel_id: self.channel_id,

@@ -3,8 +3,8 @@ use axum::{Extension, Json};
 use axum::extract::Query;
 use axum::http::StatusCode;
 use sqlx::PgPool;
-use crate::models::liver::Liver;
-use crate::database::models::livers_object::LiverObject;
+use crate::models::Liver;
+use crate::database::LiverObject;
 use super::{ApiError, ErrorResponse};
 
 pub async fn get_livers(
