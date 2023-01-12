@@ -13,12 +13,13 @@ use tonic::{Request, Response, Status, Streaming};
 use proto::salmon_api_server::{SalmonApiServer, SalmonApi};
 use proto::{Affiliation, Channel, Liver, Video, TaskResult, Void};
 
-use crate::database::models::{Accessor, Fetch};
-use crate::database::models::affiliation_object::AffiliationObject;
-use crate::database::models::livers_object::LiverObject;
-use crate::database::models::channel_object::{ChannelObject, ChannelObjectBuilder};
-use crate::database::models::upcoming_object::{VideoObject, InitVideoObject};
-use crate::database::models::id_object::{ChannelId, LiverId, VideoId};
+use crate::database::{
+    Accessor, Fetch,
+    AffiliationObject,
+    LiverId, LiverObject,
+    ChannelId, ChannelObject, InitChannelObject,
+    VideoId, VideoObject, InitVideoObject
+};
 
 #[allow(clippy::all, rustdoc::all)]
 mod proto { tonic::include_proto!("salmon"); }
@@ -192,7 +193,7 @@ impl From<Channel> for ChannelObject {
     fn from(data: Channel) -> Self {
         let timestamp = if let Some(stamp) = data.published_at { (stamp.seconds, stamp.nanos as u32) } else { (0, 0) };
         let date: DateTime<Local> = Local.timestamp(timestamp.0, timestamp.1);
-        ChannelObjectBuilder {
+        InitChannelObject {
             channel_id: ChannelId::new(data.channel_id),
             liver_id: data.liver_id.map(LiverId::new),
             logo_url: data.logo_url,

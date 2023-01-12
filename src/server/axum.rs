@@ -7,15 +7,15 @@ use crate::routing;
 pub async fn run_webapi_server(connection_instance: Pool<Postgres>) {
     let app = Router::new()
         .route("/", get(routing::version))
-        .route("/affiliations", get(routing::affiliation::get_affiliations))
-        .route("/affiliations/:id", get(routing::affiliation::get_affiliation_from_id))
-        .route("/livers", get(routing::liver::get_livers))
-        .route("/livers/filtered", get(routing::liver::get_livers_filtered))
-        .route("/channels", get(routing::channel::get_channels))
-        .route("/upcomings", get(routing::upcoming::get_upcomings))
+        .route("/affiliations", get(routing::get_affiliations))
+        .route("/affiliations/:id", get(routing::get_affiliation_from_id))
+        .route("/livers", get(routing::get_livers))
+        .route("/livers/filtered", get(routing::get_livers_filtered))
+        .route("/channels", get(routing::get_channels))
+        .route("/upcomings", get(routing::get_upcomings))
         .layer(axum::Extension(connection_instance));
 
-    let bind_address = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let bind_address = SocketAddr::from(([127, 0, 0, 1], 4500));
     tracing::debug!("listening on {}", bind_address);
     axum::Server::bind(&bind_address)
         .serve(app.into_make_service())

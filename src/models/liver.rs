@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
-use crate::database::models::id_object::LiverId;
-use crate::database::models::livers_object::LiverObject;
+use crate::database::{LiverId, LiverObject};
 
 use super::NumId;
 use super::affiliation::Affiliation;

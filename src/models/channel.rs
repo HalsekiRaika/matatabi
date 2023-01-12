@@ -1,7 +1,6 @@
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
-use crate::database::models::id_object::ChannelId;
-use crate::database::models::channel_object::ChannelObject;
+use crate::database::{ChannelId, ChannelObject};
 
 use super::{NumId, StringId};
 use super::liver::Liver;
