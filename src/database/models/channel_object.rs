@@ -131,7 +131,7 @@ impl Fetch for ChannelObject {
     }
 }
 
-pub struct ChannelObjectBuilder {
+pub struct InitChannelObject {
     pub channel_id: ChannelId,
     pub liver_id: Option<LiverId>,
     pub logo_url: String,
@@ -141,7 +141,7 @@ pub struct ChannelObjectBuilder {
     pub init: ()
 }
 
-impl Default for ChannelObjectBuilder {
+impl Default for InitChannelObject {
     fn default() -> Self {
         Self {
             channel_id: ChannelId::default(),
@@ -154,7 +154,7 @@ impl Default for ChannelObjectBuilder {
     }
 }
 
-impl ChannelObjectBuilder {
+impl InitChannelObject {
     pub fn build(self) -> ChannelObject {
         ChannelObject {
             channel_id: self.channel_id,
