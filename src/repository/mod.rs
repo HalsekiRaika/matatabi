@@ -7,6 +7,8 @@ pub(in crate::repository) use self::{
     __effectuation::*,
     dto::*
 };
+
+pub mod interactor;
 #[derive(Debug, thiserror::Error)]
 pub enum RepositoryError {
     #[error("cannot find `{id}:{entity}` in the following {method}.")]
