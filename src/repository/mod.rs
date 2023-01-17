@@ -1,6 +1,10 @@
+mod dto;
+
 mod __effectuation;
+
 pub(in crate::repository) use self::{
     __effectuation::*,
+    dto::*
 };
 #[derive(Debug, thiserror::Error)]
 pub enum RepositoryError {
