@@ -3,8 +3,13 @@ use tracing_subscriber::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+#[deprecated]
 mod database;
+
+
+#[deprecated]
 mod models;
+
 mod server;
 mod routing;
 
