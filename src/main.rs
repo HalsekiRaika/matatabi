@@ -11,6 +11,7 @@ mod postgres;
 #[deprecated]
 mod models;
 
+mod entities;
 mod server;
 mod routing;
 
