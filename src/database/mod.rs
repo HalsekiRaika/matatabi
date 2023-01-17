@@ -1,4 +1,3 @@
-pub mod postgres_database;
 #[deprecated]
 mod models;
 

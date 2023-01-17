@@ -6,6 +6,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 #[deprecated]
 mod database;
 
+mod postgres;
 
 #[deprecated]
 mod models;
@@ -30,10 +31,10 @@ async fn main() -> Result<(), std::io::Error> {
 
     tracing::info!("Cats are crazy about Matatabi. ฅ^•ω•^ฅ");
 
-    database::postgres_database::migration()
+    postgres::migration()
         .await
         .expect("An Error occurred by database migration.");
-    let pool = database::postgres_database::connect()
+    let pool = postgres::connect()
         .await
         .expect("An Error occurred by database connection pool.");
 
