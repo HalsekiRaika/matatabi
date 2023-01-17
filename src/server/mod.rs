@@ -1,5 +1,5 @@
-pub mod salmon;
-pub mod meilisearch;
+mod salmon;
+
 mod axum;
 mod layer;
 
