@@ -7,6 +7,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 mod database;
 
 mod postgres;
+mod repository;
 
 #[deprecated]
 mod models;
