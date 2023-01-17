@@ -36,6 +36,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["registry", "fmt", "env-filter"] }
 tracing-appender = "0.2"
 
+destructure = "0.1.2"
 dotenv = "0.15.0"
 yansi = "0.5.0"
 async-trait = "0.1.51"
