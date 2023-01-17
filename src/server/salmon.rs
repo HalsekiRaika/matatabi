@@ -1,3 +1,4 @@
+#![deprecated]
 use std::collections::vec_deque::VecDeque;
 use std::fmt::Display;
 use std::net::ToSocketAddrs;
