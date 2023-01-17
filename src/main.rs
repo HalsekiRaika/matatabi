@@ -1,4 +1,5 @@
 use dotenv::dotenv;
+use sqlx::{Pool, Postgres};
 use tracing_subscriber::Layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -43,4 +44,23 @@ async fn main() -> Result<(), std::io::Error> {
     server::server_run(pool).await;
 
     Ok(())
+}
+
+
+fn inject_affiliation(pool: Pool<Postgres>) {
+    use repository::{
+        PgAffiliationRepository, 
+        interactor::affiliation::{
+            CreateInteractor,
+            UpdateInteractor,
+            DeleteInteractor,
+        }
+    };
+
+    let repository = PgAffiliationRepository::new(pool);
+    let (create, update, delete) = (
+        CreateInteractor::new(repository.clone()),
+        UpdateInteractor::new(repository.clone()),
+        DeleteInteractor::new(repository)
+    );
 }
